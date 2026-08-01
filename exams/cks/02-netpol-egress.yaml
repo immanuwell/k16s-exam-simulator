@@ -1,0 +1,15 @@
+id: 02-netpol-egress
+title: Implement Egress Controls with NetworkPolicy
+weight: 5
+context: ""
+description: |
+  In namespace `netpol-egress`, create two NetworkPolicies:
+
+  **1. `default-deny-egress`** — denies all egress from every pod in the namespace.
+
+  **2. `allow-dns-and-cache`** — applied to all pods; allows:
+  - Egress to pods in namespace `kube-system` on **UDP port 53** (DNS)
+  - Egress to pods with label `app=cache` on **TCP port 6379**
+
+  The namespace `netpol-egress` and a `cache` pod (label `app=cache`) in it already exist.
+hint: "A policy with `policyTypes: [Egress]` and an empty `egress: []` array blocks all egress. A second policy can then open specific egress ports using namespaceSelector or podSelector."

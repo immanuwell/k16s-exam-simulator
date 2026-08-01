@@ -1,0 +1,19 @@
+id: 09-seccomp-mkdir
+title: Create a Custom Seccomp Profile to Block mkdir
+weight: 6
+context: controlplane
+description: |
+  Create a custom seccomp profile that blocks the `mkdir` and `mkdirat` syscalls.
+
+  1. Create the profile at `/var/lib/kubelet/seccomp/profiles/block-mkdir.json`:
+     - `defaultAction`: `SCMP_ACT_ALLOW`
+     - Add a `syscalls` entry that sets action `SCMP_ACT_ERRNO` for `mkdir` and `mkdirat`
+
+  2. Create a Pod named `seccomp-mkdir` in the `default` namespace:
+     - Image: `busybox:latest`
+     - Command: `sleep 3600`
+     - Seccomp profile: `Localhost` using `profiles/block-mkdir.json`
+     - Pin to `controlplane` (`nodeName: controlplane`) — seccomp profiles are loaded per-node from `/var/lib/kubelet/seccomp/`
+
+  3. Copy the profile to `/opt/cks-seccomp/block-mkdir.json`.
+hint: "The profile JSON must have `{\"defaultAction\": \"SCMP_ACT_ALLOW\", \"syscalls\": [{\"names\": [\"mkdir\", \"mkdirat\"], \"action\": \"SCMP_ACT_ERRNO\"}]}`. Reference it in the pod as `seccompProfile.type: Localhost` with `localhostProfile: profiles/block-mkdir.json`."

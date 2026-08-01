@@ -1,0 +1,14 @@
+id: 15-pki-sign
+title: Sign a Certificate Signing Request with a CA
+weight: 5
+context: controlplane
+description: |
+  A Certificate Authority and a CSR have been prepared at:
+  - CA certificate: `/opt/cks-pki/ca.crt`
+  - CA private key: `/opt/cks-pki/ca.key`
+  - CSR to sign: `/opt/cks-pki/app.csr` (for a service with CN=`app.svc`)
+
+  Sign the CSR to produce a certificate valid for **365 days**, saved to `/opt/cks-pki/app.crt`.
+
+  Verify that the resulting certificate validates against the CA.
+hint: "Use `openssl x509 -req -in app.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out app.crt -days 365`. Verify with `openssl verify -CAfile ca.crt app.crt`."

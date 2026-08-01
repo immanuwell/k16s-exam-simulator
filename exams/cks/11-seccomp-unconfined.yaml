@@ -1,0 +1,11 @@
+id: 11-seccomp-unconfined
+title: Replace an Unconfined Pod with RuntimeDefault Seccomp
+weight: 4
+context: ""
+description: |
+  A Pod named `unconfined-pod` exists in namespace `seccomp-fix` with its seccomp profile explicitly set to `Unconfined`. This is a security risk.
+
+  1. **Delete** the existing `unconfined-pod`.
+  2. **Recreate** it with the same image (`nginx:alpine`) but with seccomp set to `RuntimeDefault` at the pod level.
+  3. Save the new Pod manifest to `/opt/cks-seccomp/fixed-pod.yaml`.
+hint: "Export the pod with `kubectl get pod unconfined-pod -n seccomp-fix -o yaml`, edit the `seccompProfile.type` from `Unconfined` to `RuntimeDefault`, then `kubectl apply` the modified manifest."

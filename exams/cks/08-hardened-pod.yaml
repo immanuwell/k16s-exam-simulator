@@ -1,0 +1,15 @@
+id: 08-hardened-pod
+title: Create a Pod Hardened with AppArmor and Seccomp
+weight: 5
+context: controlplane
+description: |
+  The AppArmor profile `k8s-no-proc-write` is already loaded on the node.
+
+  Create a Pod named `hardened` in the `default` namespace with the following security configuration on a container named `app` (image: `nginx:alpine`).
+  Pin the pod to the `controlplane` node (`nodeName: controlplane`) — AppArmor profiles are node-local.
+
+  - **AppArmor profile**: `k8s-no-proc-write`
+  - **Seccomp profile**: `RuntimeDefault` at the **pod level**
+
+  Save the applied Pod manifest to `/opt/cks-security/hardened.yaml`.
+hint: "Set `securityContext.seccompProfile.type: RuntimeDefault` at the pod spec level. For AppArmor use the annotation `container.apparmor.security.beta.kubernetes.io/app: localhost/k8s-no-proc-write` or the native container `securityContext.appArmorProfile` field."

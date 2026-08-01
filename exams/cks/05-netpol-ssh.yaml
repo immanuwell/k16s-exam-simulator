@@ -1,0 +1,13 @@
+id: 05-netpol-ssh
+title: Restrict SSH Access by CIDR with Exception
+weight: 4
+context: ""
+description: |
+  In namespace `netpol-ssh`, create a NetworkPolicy named `allow-ssh-office` that:
+
+  - Applies to **all pods** in the namespace
+  - Allows **ingress** on **TCP port 22** only from CIDR `203.0.113.0/24`
+  - **Except** from the sub-range `203.0.113.128/25` (which must be blocked)
+
+  Save the applied manifest to `/opt/cks-netpol/allow-ssh-office.yaml`.
+hint: "Use an `ipBlock` ingress rule with `cidr: 203.0.113.0/24` and `except: [203.0.113.128/25]` on port 22."

@@ -1,0 +1,14 @@
+id: 14-pki-csr
+title: Create a Certificate Signing Request for a User
+weight: 4
+context: controlplane
+description: |
+  A private key for user **alice** exists at `/opt/cks-pki/alice.key`.
+
+  Using this key, create a Certificate Signing Request (CSR) at `/opt/cks-pki/alice.csr` with:
+  - **CN** (Common Name): `alice`
+  - **O** (Organization): `dev`
+  - **O** (Organization): `ops`
+
+  (The user alice is a member of both the `dev` and `ops` groups.)
+hint: "Use `openssl req -new -key alice.key -out alice.csr -subj '/CN=alice/O=dev/O=ops'`. Verify with `openssl req -in alice.csr -text -noout | grep Subject`."

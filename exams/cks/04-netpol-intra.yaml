@@ -1,0 +1,13 @@
+id: 04-netpol-intra
+title: Allow Only Intra-Namespace Traffic
+weight: 3
+context: ""
+description: |
+  In namespace `netpol-intra`, create a NetworkPolicy named `intra-namespace-only` that:
+
+  - Applies to **all pods** in the namespace
+  - Allows **ingress** only from pods **within the same namespace**
+  - Denies ingress from all other namespaces
+
+  The namespace already has the automatic label `kubernetes.io/metadata.name=netpol-intra`.
+hint: "Use a `namespaceSelector` with `matchLabels: {kubernetes.io/metadata.name: netpol-intra}` combined with an empty `podSelector: {}` to match all pods in the namespace."

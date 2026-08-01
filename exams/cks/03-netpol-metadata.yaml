@@ -1,0 +1,13 @@
+id: 03-netpol-metadata
+title: Block Cloud Metadata Endpoint via NetworkPolicy
+weight: 5
+context: ""
+description: |
+  In namespace `netpol-metadata`, create a NetworkPolicy named `block-metadata` on all pods that:
+
+  - **Blocks egress** to the cloud metadata endpoint `169.254.169.254/32`
+  - Allows all other egress (including to `0.0.0.0/0` minus `169.254.169.254/32`)
+  - Allows DNS egress to pods in namespace `kube-system` on **UDP port 53**
+
+  Save the applied manifest to `/opt/cks-netpol/block-metadata.yaml`.
+hint: "Use an `ipBlock` egress rule with `cidr: 0.0.0.0/0` and `except: [169.254.169.254/32]`. Add a separate egress rule for kube-system DNS. This is a common CKS pattern for blocking IMDS access."

@@ -1,0 +1,20 @@
+id: 06-apparmor-load
+title: Load an AppArmor Profile and Apply It to a Pod
+weight: 6
+context: controlplane
+description: |
+  A prepared AppArmor profile file exists at `/etc/apparmor.d/k8s-deny-etc` on the node.
+  It denies all writes to `/etc/**` while allowing other operations.
+
+  Perform the following steps:
+
+  1. **Load** the profile using `apparmor_parser`.
+  2. **Create a Pod** named `deny-etc-pod` in the `default` namespace:
+     - Image: `busybox:latest`
+     - Command: `sleep 3600`
+     - Apply the AppArmor profile `k8s-deny-etc` to the container named `deny-etc`.
+     - Pin the pod to the `controlplane` node (`nodeName: controlplane`) — AppArmor profiles are node-local.
+  3. **Test** that the profile blocks writes to `/etc`: run
+     `kubectl exec deny-etc-pod -- sh -c 'echo test > /etc/blocked 2>&1; echo done'`
+     and save the output to `/opt/cks-apparmor/deny-etc-test.txt`.
+hint: "Load with: `apparmor_parser -r -W /etc/apparmor.d/k8s-deny-etc`. Apply via annotation `container.apparmor.security.beta.kubernetes.io/<ctr>: localhost/k8s-deny-etc` or the native `securityContext.appArmorProfile` field (K8s 1.30+)."

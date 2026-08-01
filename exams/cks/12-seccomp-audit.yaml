@@ -1,0 +1,19 @@
+id: 12-seccomp-audit
+title: Create an Audit Seccomp Profile for Write Syscalls
+weight: 5
+context: controlplane
+description: |
+  Create a seccomp profile that logs write-related syscalls instead of blocking them.
+
+  1. Create the profile at `/var/lib/kubelet/seccomp/profiles/audit-write.json`:
+     - `defaultAction`: `SCMP_ACT_ALLOW`
+     - Add a `syscalls` entry that sets action `SCMP_ACT_LOG` for `write` and `writev`
+
+  2. Create a Pod named `audit-write` in the `default` namespace:
+     - Image: `busybox:latest`
+     - Command: `sleep 3600`
+     - Seccomp profile: `Localhost` using `profiles/audit-write.json`
+     - Pin to `controlplane` (`nodeName: controlplane`) — seccomp profiles live in `/var/lib/kubelet/seccomp/` per node
+
+  3. Copy the profile to `/opt/cks-seccomp/audit-write.json`.
+hint: "Use `SCMP_ACT_LOG` (not ERRNO) to audit without blocking. The localhostProfile path is relative to `/var/lib/kubelet/seccomp/` — so specify `profiles/audit-write.json`."

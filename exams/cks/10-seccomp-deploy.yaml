@@ -1,0 +1,11 @@
+id: 10-seccomp-deploy
+title: Enable RuntimeDefault Seccomp on a Deployment
+weight: 4
+context: ""
+description: |
+  A Deployment named `seccomp-app` exists in namespace `seccomp-apps`. It currently has no seccomp profile configured.
+
+  1. **Patch** the Deployment to apply `RuntimeDefault` seccomp at the **pod level**.
+  2. Wait for the rollout to complete.
+  3. Save the seccomp type string to `/opt/cks-seccomp/seccomp-type.txt`.
+hint: "Add `spec.template.spec.securityContext.seccompProfile.type: RuntimeDefault` to the deployment. Use `kubectl patch`, `kubectl edit`, or a strategic merge patch."

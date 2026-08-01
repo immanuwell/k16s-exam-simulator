@@ -1,0 +1,9 @@
+id: 13-pki-keygen
+title: Generate an RSA Private Key
+weight: 3
+context: controlplane
+description: |
+  Generate a **3072-bit RSA private key** and save it to `/opt/cks-pki/user.key`.
+
+  The file permissions must be set to `0600` (owner read/write only).
+hint: "Use `openssl genrsa -out /opt/cks-pki/user.key 3072` then `chmod 600 /opt/cks-pki/user.key`. Verify with `openssl pkey -in user.key -text -noout`."

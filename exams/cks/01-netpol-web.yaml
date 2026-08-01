@@ -1,0 +1,15 @@
+id: 01-netpol-web
+title: Restrict Pod Ingress with a NetworkPolicy
+weight: 4
+context: ""
+description: |
+  A namespace `netpol-web` contains a pod `backend` (label: `app=backend`).
+
+  Create a **NetworkPolicy** named `web-ingress-allow` in namespace `netpol-web` that:
+
+  - Allows **ingress** to pods with label `app=backend` from pods with label `app=frontend` on **port 8080**
+  - Allows **ingress** to pods with label `app=backend` from any pod in namespaces with label `team=monitoring` on **port 9100**
+  - Denies all other ingress to `app=backend` pods
+
+  Save the applied NetworkPolicy manifest to `/opt/cks-netpol/web-ingress-allow.yaml`.
+hint: "A NetworkPolicy can have multiple ingress rules. Use `podSelector` for the frontend rule and `namespaceSelector` for the monitoring rule. The monitoring namespace already has label `team=monitoring`."

@@ -1,0 +1,16 @@
+id: 07-apparmor-deploy
+title: Apply an AppArmor Profile to a Deployment
+weight: 5
+context: controlplane
+description: |
+  A Deployment named `web-aa` exists in the `default` namespace with a single container named `web` (image: `nginx:alpine`).
+  The AppArmor profile `k8s-no-proc-write` is already loaded on the node — it denies writes to `/proc/sys/**`.
+
+  The deployment already runs on the `controlplane` node (AppArmor profiles are node-local).
+
+  Perform the following:
+
+  1. **Patch** deployment `web-aa` so the `web` container runs under AppArmor profile `k8s-no-proc-write`.
+  2. Wait for the rollout to complete (`kubectl rollout status`).
+  3. Save the updated Deployment manifest to `/opt/cks-apparmor/web-aa.yaml`.
+hint: "Edit the deployment with `kubectl edit` or `kubectl patch`. Use the annotation `container.apparmor.security.beta.kubernetes.io/web: localhost/k8s-no-proc-write` on the Pod template, or the native `securityContext.appArmorProfile` field on the container."
