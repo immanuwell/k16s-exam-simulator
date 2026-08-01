@@ -1,0 +1,34 @@
+# Build artifacts
+/server/ckx-server
+/server/dist/
+*.o
+*.a
+
+# Go
+vendor/
+
+# Distribution
+*.tar.gz
+*.zip
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
+*.crt
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+*.log
+/tmp/
