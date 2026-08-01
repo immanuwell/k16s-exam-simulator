@@ -17,6 +17,7 @@
   let error      = $state('');
 
   let timerInterval = null;
+  let terminalIframe = $state(null);
 
   // ── Derived ────────────────────────────────────────────────────────────────
   let currentQuestion = $derived(questions[currentIdx] ?? null);
@@ -393,9 +394,11 @@
       <!-- Terminal iframe -->
       <div class="flex-1 relative">
         <iframe
+          bind:this={terminalIframe}
           src="/terminal/"
           title="Terminal"
           class="absolute inset-0 w-full h-full border-0"
+          onload={() => terminalIframe?.contentWindow?.focus()}
         ></iframe>
       </div>
 
