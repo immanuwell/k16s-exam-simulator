@@ -1,0 +1,21 @@
+id: 11-netpol-multi
+title: Zone-Based Ingress and Egress with DMZ and Internal Namespaces
+weight: 7
+context: ""
+description: |
+  Namespace `netpol-multi` contains pods with label `app=app1`.
+  Namespaces `dmz` and `internal` exist but are not yet labelled.
+
+  1. Label namespace `dmz` with `zone=dmz`
+  2. Label namespace `internal` with `zone=internal`
+
+  3. Create a **NetworkPolicy** named `restrict-ingress-egress` in namespace `netpol-multi` that:
+     - Applies to pods with label `app=app1`
+     - Allows **ingress** from pods labelled `role=client` in namespaces labelled `zone=dmz` on **TCP port 8080**
+     - Allows **egress** to pods labelled `role=db` in namespaces labelled `zone=internal` on **TCP port 3306**
+     - Allows **egress** to any pod in the **same namespace** on **UDP port 53** (in-cluster DNS)
+     - Denies all other ingress and egress
+
+  4. Save the policy YAML to `/opt/cks3-netpol/restrict-ingress-egress.yaml`
+hint: |
+  Specify both `Ingress` and `Egress` in `policyTypes`. The DNS egress rule uses a `podSelector: {}` with no `namespaceSelector`, which scopes it to the same namespace.

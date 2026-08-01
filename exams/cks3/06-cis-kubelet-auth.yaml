@@ -1,0 +1,19 @@
+id: 06-cis-kubelet-auth
+title: Harden Kubelet Authentication and Authorization (CIS 4.2.1/4.2.2)
+weight: 5
+context: controlplane
+description: |
+  CIS Benchmarks 4.2.1 and 4.2.2 require that anonymous auth is disabled on the kubelet and that Webhook authorization is used.
+
+  1. Edit `/var/lib/kubelet/config.yaml` on the **controlplane** node
+  2. Set `authentication.anonymous.enabled: false`
+  3. Set `authorization.mode: Webhook`
+  4. Restart the kubelet: `systemctl restart kubelet`
+  5. Save the relevant lines to `/opt/cks3-cis/kubelet-auth.txt` (include both the anonymous and mode lines)
+hint: |
+  The config file uses YAML. Search for the `authentication:` and `authorization:` blocks.
+  After editing, save the lines:
+  ```
+  grep -A2 'authentication:\|authorization:' /var/lib/kubelet/config.yaml \
+    > /opt/cks3-cis/kubelet-auth.txt
+  ```

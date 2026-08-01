@@ -1,0 +1,22 @@
+id: 16-pki-multi-org-csr
+title: Create a CSR with Multiple Organizations
+weight: 4
+context: controlplane
+description: |
+  A private key already exists at `/opt/cks3-pki/alice.key`.
+
+  1. Create a CSR at `/opt/cks3-pki/alice.csr` with the following subject:
+     - **CN:** `alice`
+     - **O (Organizations):** `dev` **and** `ops` (both must be present)
+
+  2. Verify the CSR:
+     ```
+     openssl req -in /opt/cks3-pki/alice.csr -noout -subject
+     ```
+hint: |
+  To include multiple organizations with the `-subj` flag, repeat the `/O=` component:
+  ```
+  openssl req -new -key /opt/cks3-pki/alice.key \
+    -out /opt/cks3-pki/alice.csr \
+    -subj "/CN=alice/O=dev/O=ops"
+  ```

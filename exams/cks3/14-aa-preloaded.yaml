@@ -1,0 +1,25 @@
+id: 14-aa-preloaded
+title: Apply a Preloaded AppArmor Profile via Pod Annotation
+weight: 4
+context: controlplane
+description: |
+  AppArmor profile `k8s-no-proc-write` is already loaded on the controlplane node.
+
+  1. Create a Pod named `proc-guard` in namespace `apparmor-3`:
+     - Image: `busybox:latest`, command: `sleep 3600`, container name: `app`
+     - `nodeName: controlplane`
+     - Apply the AppArmor profile `k8s-no-proc-write` to container `app`
+
+  2. Confirm the pod is **Running**
+
+  3. Save the pod's annotations (as YAML or JSON) to `/opt/cks3-apparmor/proc-guard-annotations.txt`
+hint: |
+  Check the loaded profiles with `aa-status`. Apply via annotation:
+  ```
+  container.apparmor.security.beta.kubernetes.io/app: localhost/k8s-no-proc-write
+  ```
+  Save annotations with:
+  ```
+  kubectl get pod proc-guard -n apparmor-3 -o jsonpath='{.metadata.annotations}' \
+    > /opt/cks3-apparmor/proc-guard-annotations.txt
+  ```

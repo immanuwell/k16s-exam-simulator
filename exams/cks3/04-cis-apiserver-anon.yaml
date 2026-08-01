@@ -1,0 +1,17 @@
+id: 04-cis-apiserver-anon
+title: Disable Anonymous Auth on kube-apiserver (CIS 1.2.1)
+weight: 3
+context: controlplane
+description: |
+  CIS Benchmark 1.2.1 requires that anonymous requests to the API server are disabled.
+
+  1. Edit `/etc/kubernetes/manifests/kube-apiserver.yaml`
+  2. Ensure the flag `--anonymous-auth=false` is present in the `kube-apiserver` command args
+  3. After the API server restarts, save the flag line to `/opt/cks3-cis/apiserver-anon.txt`
+hint: |
+  Add `- --anonymous-auth=false` to the `command:` list.
+  Then:
+  ```
+  grep 'anonymous-auth' /etc/kubernetes/manifests/kube-apiserver.yaml \
+    > /opt/cks3-cis/apiserver-anon.txt
+  ```

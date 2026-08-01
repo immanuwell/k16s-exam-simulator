@@ -1,0 +1,18 @@
+id: 07-cis-etcd-cert-auth
+title: Enable etcd Client and Peer Certificate Auth (CIS 2.1/2.2)
+weight: 4
+context: controlplane
+description: |
+  CIS Benchmarks 2.1 and 2.2 require that etcd enforces TLS certificate authentication for client and peer connections.
+
+  1. Edit `/etc/kubernetes/manifests/etcd.yaml`
+  2. Ensure `--client-cert-auth=true` is set
+  3. Ensure `--peer-client-cert-auth=true` is set
+  4. Save both flag lines to `/opt/cks3-cis/etcd-cert-auth.txt` (one per line)
+hint: |
+  Both flags should already exist or need to be added to the etcd `command:` list.
+  After editing:
+  ```
+  grep 'cert-auth' /etc/kubernetes/manifests/etcd.yaml \
+    > /opt/cks3-cis/etcd-cert-auth.txt
+  ```

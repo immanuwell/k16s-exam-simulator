@@ -1,0 +1,27 @@
+id: 17-pki-cert-key-match
+title: Determine Whether a Certificate and Key Match
+weight: 3
+context: controlplane
+description: |
+  Files `/opt/cks3-pki/check.crt` and `/opt/cks3-pki/check.key` exist on the node.
+  One of them may have been replaced — they may or may not form a matching pair.
+
+  1. Use OpenSSL to compare the **public key moduli** of the certificate and the key
+  2. Write either `match` or `mismatch` (lowercase, one word) to `/opt/cks3-pki/match-result.txt`
+
+  **How to compare:**
+  ```
+  openssl x509 -in check.crt -noout -modulus | md5sum
+  openssl rsa  -in check.key -noout -modulus | md5sum
+  ```
+  If the two MD5 hashes are equal, they match.
+hint: |
+  ```bash
+  CERT_MOD=$(openssl x509 -in /opt/cks3-pki/check.crt -noout -modulus)
+  KEY_MOD=$(openssl rsa  -in /opt/cks3-pki/check.key -noout -modulus 2>/dev/null)
+  if [[ "$CERT_MOD" == "$KEY_MOD" ]]; then
+    echo "match" > /opt/cks3-pki/match-result.txt
+  else
+    echo "mismatch" > /opt/cks3-pki/match-result.txt
+  fi
+  ```

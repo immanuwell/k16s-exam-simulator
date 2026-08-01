@@ -1,0 +1,19 @@
+id: 03-cis-apiserver-profiling
+title: Disable kube-apiserver Profiling (CIS 1.2.21)
+weight: 3
+context: controlplane
+description: |
+  CIS Benchmark 1.2.21 requires that profiling is disabled on the API server.
+
+  1. Edit `/etc/kubernetes/manifests/kube-apiserver.yaml`
+  2. Ensure the flag `--profiling=false` is present in the `kube-apiserver` command args
+  3. Wait for the API server to restart, then save the flag line to `/opt/cks3-cis/apiserver-profiling.txt`
+
+  **Note:** The static pod will restart automatically after you save the manifest.
+hint: |
+  Add `- --profiling=false` to the `command:` list in the kube-apiserver manifest.
+  After the restart, extract the running flag:
+  ```
+  grep 'profiling' /etc/kubernetes/manifests/kube-apiserver.yaml \
+    > /opt/cks3-cis/apiserver-profiling.txt
+  ```

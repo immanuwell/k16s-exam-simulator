@@ -1,0 +1,26 @@
+id: 12-netpol-https-egress
+title: Allow HTTPS Egress While Blocking Cloud Metadata and Private Ranges
+weight: 6
+context: ""
+description: |
+  Namespace `netpol-external` contains pods with label `app=client`.
+
+  1. Create a **default-deny egress** NetworkPolicy named `deny-all-egress` that applies to all pods in `netpol-external`
+
+  2. Create a NetworkPolicy named `allow-external-https` in namespace `netpol-external` that:
+     - Applies to pods with label `app=client`
+     - Allows **egress** to CIDR `0.0.0.0/0` on **TCP port 443**
+     - **Blocks** (using `except`) the cloud metadata endpoint `169.254.169.254/32` and the internal pod range `10.10.0.0/16`
+     - Allows **egress** to `kube-system` on **UDP port 53** for DNS
+
+  3. Save the `allow-external-https` policy YAML to `/opt/cks3-netpol/allow-external-https.yaml`
+hint: |
+  The `ipBlock` for HTTPS egress looks like:
+  ```yaml
+  - ipBlock:
+      cidr: 0.0.0.0/0
+      except:
+      - 169.254.169.254/32
+      - 10.10.0.0/16
+  ```
+  Add a separate egress rule for DNS: `namespaceSelector` targeting `kube-system` on UDP 53.

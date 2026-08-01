@@ -1,0 +1,20 @@
+id: 05-cis-controller-manager
+title: Disable Profiling on kube-controller-manager (CIS 1.3.2)
+weight: 3
+context: controlplane
+description: |
+  CIS Benchmark 1.3.2 requires that profiling is disabled on the controller manager.
+
+  1. Edit `/etc/kubernetes/manifests/kube-controller-manager.yaml`
+  2. Ensure the flag `--profiling=false` is present
+  3. Save the flag line to `/opt/cks3-cis/controller-manager-profiling.txt`
+
+  **Also check:** confirm that `--use-service-account-credentials=true` is already set (1.3.3) and save its line to `/opt/cks3-cis/controller-manager-sa-creds.txt`
+hint: |
+  Both flags should be in the `command:` list of the controller-manager manifest.
+  ```
+  grep 'profiling' /etc/kubernetes/manifests/kube-controller-manager.yaml \
+    > /opt/cks3-cis/controller-manager-profiling.txt
+  grep 'service-account-credentials' /etc/kubernetes/manifests/kube-controller-manager.yaml \
+    > /opt/cks3-cis/controller-manager-sa-creds.txt
+  ```

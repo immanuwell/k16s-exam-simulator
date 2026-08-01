@@ -1,0 +1,17 @@
+id: 15-pki-key-size
+title: Generate a 3072-bit RSA Private Key
+weight: 3
+context: controlplane
+description: |
+  1. Create a **3072-bit RSA private key** at `/opt/cks3-pki/user.key`
+  2. Set file permissions to `600`
+
+  **Verify** the key size is correct:
+  ```
+  openssl rsa -in /opt/cks3-pki/user.key -text -noout 2>/dev/null | grep 'Private-Key'
+  ```
+hint: |
+  ```
+  openssl genrsa -out /opt/cks3-pki/user.key 3072
+  chmod 600 /opt/cks3-pki/user.key
+  ```

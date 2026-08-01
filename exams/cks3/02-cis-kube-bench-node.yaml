@@ -1,0 +1,19 @@
+id: 02-cis-kube-bench-node
+title: Run kube-bench for Node Checks
+weight: 4
+context: controlplane
+description: |
+  Run kube-bench targeting worker node checks.
+
+  1. Run kube-bench for the **node** checks and save the full output to `/opt/cks3-cis/kube-bench-node.txt`
+
+  2. Extract the test IDs of all **FAIL** checks and save them one per line to `/opt/cks3-cis/kube-bench-node-fails.txt`
+     - Format: just the numeric ID, e.g. `4.2.1`
+
+  **Tip:** FAIL lines look like: `[FAIL] 4.2.1 Description…`
+hint: |
+  ```
+  kube-bench run --targets node 2>/dev/null > /opt/cks3-cis/kube-bench-node.txt
+  grep '^FAIL' /opt/cks3-cis/kube-bench-node.txt | awk '{print $2}' \
+    > /opt/cks3-cis/kube-bench-node-fails.txt
+  ```

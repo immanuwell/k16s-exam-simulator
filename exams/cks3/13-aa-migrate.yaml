@@ -1,0 +1,22 @@
+id: 13-aa-migrate
+title: Replace a Legacy Pod with AppArmor Enforcement
+weight: 5
+context: controlplane
+description: |
+  A pod `legacy` exists in namespace `apparmor-migrate` without any AppArmor profile.
+  AppArmor profile `k8s-deny-proc` is already loaded on the node.
+
+  1. Create a **new pod** named `legacy-secure` in namespace `apparmor-migrate`:
+     - Image: `busybox:latest`, command: `sleep 3600`, container name: `app`
+     - `nodeName: controlplane`
+     - Apply the AppArmor profile `k8s-deny-proc` to container `app`
+
+  2. Ensure the pod is **Running**
+
+  3. Save the pod YAML to `/opt/cks3-apparmor/legacy-secure.yaml`
+hint: |
+  Use `securityContext.appArmorProfile` (K8s 1.30+) or the legacy annotation:
+  ```
+  container.apparmor.security.beta.kubernetes.io/app: localhost/k8s-deny-proc
+  ```
+  The original `legacy` pod does **not** need to be deleted.

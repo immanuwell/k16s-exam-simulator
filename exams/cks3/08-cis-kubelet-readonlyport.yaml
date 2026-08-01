@@ -1,0 +1,20 @@
+id: 08-cis-kubelet-readonlyport
+title: Disable Kubelet Read-Only Port (CIS 4.2.4)
+weight: 3
+context: controlplane
+description: |
+  CIS Benchmark 4.2.4 requires that the kubelet read-only port is disabled.
+
+  1. Edit `/var/lib/kubelet/config.yaml`
+  2. Set `readOnlyPort: 0` to disable the unauthenticated read-only port
+  3. Restart the kubelet: `systemctl restart kubelet`
+  4. Save the `readOnlyPort` line to `/opt/cks3-cis/kubelet-readonlyport.txt`
+
+  **Also:** set `protectKernelDefaults: true` (CIS 4.2.6) and save that line to `/opt/cks3-cis/kubelet-protect-kernel.txt`
+hint: |
+  Both settings go under the top-level keys in `/var/lib/kubelet/config.yaml`.
+  After editing:
+  ```
+  grep 'readOnlyPort' /var/lib/kubelet/config.yaml > /opt/cks3-cis/kubelet-readonlyport.txt
+  grep 'protectKernelDefaults' /var/lib/kubelet/config.yaml > /opt/cks3-cis/kubelet-protect-kernel.txt
+  ```

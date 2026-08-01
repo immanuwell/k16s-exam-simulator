@@ -1,0 +1,16 @@
+id: 18-pki-subject-issuer
+title: Extract Subject and Issuer from a Certificate
+weight: 3
+context: controlplane
+description: |
+  A certificate exists at `/opt/cks3-pki/etcd.crt`.
+
+  1. Use OpenSSL to extract both the **Subject** and the **Issuer** from the certificate
+  2. Save the output to `/opt/cks3-pki/etcd-subject-issuer.txt`
+
+  The file must contain both the Subject line and the Issuer line.
+hint: |
+  ```
+  openssl x509 -in /opt/cks3-pki/etcd.crt -noout -subject -issuer \
+    > /opt/cks3-pki/etcd-subject-issuer.txt
+  ```

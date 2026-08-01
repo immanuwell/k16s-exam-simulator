@@ -1,0 +1,22 @@
+id: 10-netpol-staging
+title: Staging Ingress Allowlist with Multi-Port and CIDR
+weight: 6
+context: ""
+description: |
+  Namespace `netpol-staging` contains pods with label `app=web`.
+  Namespace `ops-team` exists but is not yet labelled.
+
+  1. Label namespace `ops-team` with `team=ops`
+
+  2. Create a **default-deny ingress** NetworkPolicy named `deny-ingress-all` in namespace `netpol-staging` that applies to all pods
+
+  3. Create a NetworkPolicy named `staging-allowlist` in namespace `netpol-staging` that:
+     - Applies to pods with label `app=web`
+     - Allows **ingress** from pods in namespaces labelled `team=ops` on **TCP ports 8080 and 8443**
+     - Allows **ingress** from CIDR `198.51.100.0/24` on **TCP port 443**
+     - Denies all other ingress
+
+  4. Save the `staging-allowlist` policy YAML to `/opt/cks3-netpol/staging-allowlist.yaml`
+hint: |
+  Use two separate `ingress` rules: one with `namespaceSelector` listing both ports, and one with `ipBlock` for the CIDR.
+  For two ports in one rule, list them as separate entries under `ports:`.

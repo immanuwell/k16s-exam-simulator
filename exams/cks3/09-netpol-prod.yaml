@@ -1,0 +1,29 @@
+id: 09-netpol-prod
+title: Restrict Ingress to Prod Namespace Pods Only
+weight: 5
+context: ""
+description: |
+  Namespace `netpol-prod` contains pods with label `app=payments`.
+  Namespace `prod-apps` exists but is not yet labelled.
+
+  1. Label namespace `prod-apps` with `env=prod`
+
+  2. Create a **NetworkPolicy** named `payments-ingress-prod` in namespace `netpol-prod` that:
+     - Applies to pods with label `app=payments`
+     - Allows **ingress** from pods with label `access=allowed` in namespaces labelled `env=prod`
+     - Allows **TCP port 9443** only
+     - Denies all other ingress
+
+  3. Save the policy YAML to `/opt/cks3-netpol/payments-ingress-prod.yaml`
+hint: |
+  Combine `namespaceSelector` and `podSelector` within one `from` entry to require both conditions simultaneously:
+  ```yaml
+  from:
+  - namespaceSelector:
+      matchLabels:
+        env: prod
+    podSelector:
+      matchLabels:
+        access: allowed
+  ```
+  Using two separate list items would allow either condition — use a single item with both selectors.

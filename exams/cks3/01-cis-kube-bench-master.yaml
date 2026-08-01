@@ -1,0 +1,17 @@
+id: 01-cis-kube-bench-master
+title: Run kube-bench for Control Plane Checks
+weight: 4
+context: controlplane
+description: |
+  Run kube-bench targeting the control plane (master) checks.
+
+  1. Run kube-bench for the **master** (control plane) checks and save the full output to `/opt/cks3-cis/kube-bench-master.txt`
+
+  2. Count the total number of **FAIL** findings and save the integer to `/opt/cks3-cis/kube-bench-master-fail-count.txt`
+
+  **Tip:** Run as root. kube-bench is at `/usr/local/bin/kube-bench`.
+hint: |
+  ```
+  kube-bench run --targets master 2>/dev/null > /opt/cks3-cis/kube-bench-master.txt
+  grep -c '^FAIL' /opt/cks3-cis/kube-bench-master.txt > /opt/cks3-cis/kube-bench-master-fail-count.txt
+  ```
