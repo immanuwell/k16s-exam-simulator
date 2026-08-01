@@ -6,7 +6,7 @@ log_step "ttyd (web terminal)"
 
 already_done "ttyd" && { log_skip "ttyd"; exit 0; }
 
-TTYD_VERSION="${CKX_TTYD_VERSION:-1.7.7}"
+TTYD_VERSION="${K16S_TTYD_VERSION:-1.7.7}"
 ARCH=$(dpkg --print-architecture)
 
 case "${ARCH}" in
@@ -21,9 +21,9 @@ curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/tt
 chmod +x /usr/local/bin/ttyd
 log_ok "ttyd installed at /usr/local/bin/ttyd"
 
-cat > /etc/systemd/system/ckx-terminal.service <<'EOF'
+cat > /etc/systemd/system/k16s-terminal.service <<'EOF'
 [Unit]
-Description=CKX Web Terminal (ttyd)
+Description=K16S Web Terminal (ttyd)
 After=network.target
 
 [Service]
@@ -42,7 +42,7 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now ckx-terminal.service
-log_ok "ckx-terminal service started on 127.0.0.1:7681"
+systemctl enable --now k16s-terminal.service
+log_ok "k16s-terminal service started on 127.0.0.1:7681"
 
 mark_done "ttyd"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CKX — Self-Hosted Kubernetes Exam Platform
+# K16S — Self-Hosted Kubernetes Exam Platform
 # Usage:
 #   On the VM directly:  bash install.sh [--profile cka] [--k8s 1.33] [--workers 1]
 #   Targeting a remote:  bash install.sh --host 1.2.3.4 [--key ~/.ssh/id_ed25519]
@@ -28,8 +28,8 @@ if [[ -n "${REMOTE_HOST}" ]]; then
   SSH_OPTS=(-o StrictHostKeyChecking=no -o ConnectTimeout=10)
   [[ -n "${SSH_KEY}" ]] && SSH_OPTS+=(-i "${SSH_KEY}")
 
-  echo "→ Uploading CKX to ${SSH_USER}@${REMOTE_HOST}:/opt/ckx ..."
-  ssh "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" "mkdir -p /opt/ckx"
+  echo "→ Uploading K16S to ${SSH_USER}@${REMOTE_HOST}:/opt/k16s ..."
+  ssh "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" "mkdir -p /opt/k16s"
 
   # Sync entire repo; skip build artifacts and secrets
   rsync -az --delete \
@@ -40,7 +40,7 @@ if [[ -n "${REMOTE_HOST}" ]]; then
     --exclude='server/frontend/.svelte-kit/' \
     --exclude='.env' \
     "${SCRIPT_DIR}/" \
-    "${SSH_USER}@${REMOTE_HOST}:/opt/ckx/" \
+    "${SSH_USER}@${REMOTE_HOST}:/opt/k16s/" \
     2>/dev/null \
   || tar czf - \
        -C "${SCRIPT_DIR}" \
@@ -51,11 +51,11 @@ if [[ -n "${REMOTE_HOST}" ]]; then
        --exclude='server/frontend/.svelte-kit' \
        . \
      | ssh "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" \
-         "cd /opt/ckx && tar xzf -"
+         "cd /opt/k16s && tar xzf -"
 
   echo "→ Running provisioner on ${REMOTE_HOST} ..."
   ssh "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" \
-    "bash /opt/ckx/provision/main.sh ${EXTRA_ARGS[*]:-}"
+    "bash /opt/k16s/provision/main.sh ${EXTRA_ARGS[*]:-}"
   exit 0
 fi
 

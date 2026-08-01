@@ -7,9 +7,9 @@ log_step "Install k8s on worker nodes & join cluster"
 already_done "node-join" && { log_skip "worker node join"; exit 0; }
 
 export KUBECONFIG=/root/.kube/config
-WORKER_COUNT="${CKX_WORKER_COUNT:-1}"
-K8S_VERSION="${CKX_K8S_VERSION:-1.33}"
-JOIN_CMD_FILE="/etc/ckx/join-command.sh"
+WORKER_COUNT="${K16S_WORKER_COUNT:-1}"
+K8S_VERSION="${K16S_K8S_VERSION:-1.33}"
+JOIN_CMD_FILE="/etc/k16s/join-command.sh"
 
 [[ -f "${JOIN_CMD_FILE}" ]] || die "Join command not found at ${JOIN_CMD_FILE}. Run cluster-init first."
 JOIN_CMD=$(cat "${JOIN_CMD_FILE}")
@@ -123,7 +123,7 @@ join_worker() {
 log_info "Setting up ${WORKER_COUNT} worker node(s) in parallel..."
 SETUP_PIDS=()
 for i in $(seq 1 "${WORKER_COUNT}"); do
-  setup_worker "${i}" > "/var/log/ckx-node0${i}-setup.log" 2>&1 &
+  setup_worker "${i}" > "/var/log/k16s-node0${i}-setup.log" 2>&1 &
   SETUP_PIDS+=($!)
 done
 
@@ -132,7 +132,7 @@ for i in $(seq 1 "${WORKER_COUNT}"); do
   if wait "${SETUP_PIDS[$((i-1))]}"; then
     log_ok "node0${i} setup done"
   else
-    log_warn "node0${i} setup FAILED — see /var/log/ckx-node0${i}-setup.log"
+    log_warn "node0${i} setup FAILED — see /var/log/k16s-node0${i}-setup.log"
     FAILED=$((FAILED + 1))
   fi
 done
@@ -143,7 +143,7 @@ done
 log_info "Joining ${WORKER_COUNT} worker node(s) to cluster..."
 JOIN_PIDS=()
 for i in $(seq 1 "${WORKER_COUNT}"); do
-  join_worker "${i}" > "/var/log/ckx-node0${i}-join.log" 2>&1 &
+  join_worker "${i}" > "/var/log/k16s-node0${i}-join.log" 2>&1 &
   JOIN_PIDS+=($!)
 done
 
@@ -152,7 +152,7 @@ for i in $(seq 1 "${WORKER_COUNT}"); do
   if wait "${JOIN_PIDS[$((i-1))]}"; then
     log_ok "node0${i} joined"
   else
-    log_warn "node0${i} join FAILED — see /var/log/ckx-node0${i}-join.log"
+    log_warn "node0${i} join FAILED — see /var/log/k16s-node0${i}-join.log"
     FAILED=$((FAILED + 1))
   fi
 done

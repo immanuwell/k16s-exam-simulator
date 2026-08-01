@@ -7,8 +7,8 @@ log_step "Calico CNI"
 already_done "cni" && { log_skip "Calico CNI"; exit 0; }
 
 export KUBECONFIG=/root/.kube/config
-POD_CIDR="${CKX_POD_CIDR:-10.244.0.0/16}"
-CALICO_VERSION="${CKX_CALICO_VERSION:-v3.29.1}"
+POD_CIDR="${K16S_POD_CIDR:-10.244.0.0/16}"
+CALICO_VERSION="${K16S_CALICO_VERSION:-v3.29.1}"
 
 log_info "Installing Calico ${CALICO_VERSION} via Tigera operator..."
 

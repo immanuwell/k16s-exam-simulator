@@ -8,7 +8,7 @@ if [[ ! -f /opt/cks-pki/ca.key ]]; then
   openssl genrsa -out /opt/cks-pki/ca.key 2048
   openssl req -new -x509 -key /opt/cks-pki/ca.key \
     -out /opt/cks-pki/ca.crt -days 3650 \
-    -subj '/CN=cks-ca/O=CKX'
+    -subj '/CN=cks-ca/O=K16S'
   chmod 600 /opt/cks-pki/ca.key
 fi
 

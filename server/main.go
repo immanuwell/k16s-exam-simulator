@@ -13,9 +13,9 @@ import (
 var frontendFiles embed.FS
 
 func main() {
-	port := envOr("CKX_PORT", "8080")
-	dbPath := envOr("CKX_DB", "/var/lib/ckx/ckx.db")
-	examDir := envOr("CKX_EXAM_DIR", "/var/lib/ckx/exams")
+	port := envOr("K16S_PORT", "8080")
+	dbPath := envOr("K16S_DB", "/var/lib/k16s/k16s.db")
+	examDir := envOr("K16S_EXAM_DIR", "/var/lib/k16s/exams")
 
 	db := mustOpenDB(dbPath)
 	defer db.Close()
@@ -42,7 +42,7 @@ func main() {
 	}
 	mux.Handle("/", spaHandler(sub))
 
-	log.Printf("ckx-server listening on :%s", port)
+	log.Printf("k16s-server listening on :%s", port)
 	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware(mux)))
 }
 

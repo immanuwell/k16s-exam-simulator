@@ -16,9 +16,9 @@ echo "  Kubernetes Exam Platform — Provisioner"
 echo "  ─────────────────────────────────────"
 echo ""
 
-EXAM_PROFILE="${CKX_PROFILE:-cka}"   # cka | cks | ckad
-K8S_VERSION="${CKX_K8S_VERSION:-1.33}"
-WORKER_COUNT="${CKX_WORKER_COUNT:-1}"
+EXAM_PROFILE="${K16S_PROFILE:-cka}"   # cka | cks | ckad
+K8S_VERSION="${K16S_K8S_VERSION:-1.33}"
+WORKER_COUNT="${K16S_WORKER_COUNT:-1}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -29,16 +29,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-export CKX_PROFILE="${EXAM_PROFILE}"
-export CKX_K8S_VERSION="${K8S_VERSION}"
-export CKX_WORKER_COUNT="${WORKER_COUNT}"
+export K16S_PROFILE="${EXAM_PROFILE}"
+export K16S_K8S_VERSION="${K8S_VERSION}"
+export K16S_WORKER_COUNT="${WORKER_COUNT}"
 
 log_info "Profile:         ${EXAM_PROFILE}"
 log_info "Kubernetes:      v${K8S_VERSION}.x"
 log_info "Worker nodes:    ${WORKER_COUNT}"
 echo ""
 
-mkdir -p /var/lib/ckx/markers
+mkdir -p /var/lib/k16s/markers
 
 run_step() {
   local script="${SCRIPT_DIR}/${1}.sh"
@@ -58,7 +58,7 @@ run_step node-join
 run_step candidate
 run_step ttyd
 run_step nginx
-run_step ckx-server
+run_step k16s-server
 
 PROFILE_SCRIPT="${SCRIPT_DIR}/profiles/${EXAM_PROFILE}.sh"
 if [[ -f "${PROFILE_SCRIPT}" ]]; then
@@ -67,11 +67,11 @@ if [[ -f "${PROFILE_SCRIPT}" ]]; then
 fi
 
 NODE_IP=$(ip route get 8.8.8.8 2>/dev/null | grep -oP 'src \K[^ ]+' || hostname -I | awk '{print $1}')
-PASS=$(cat /etc/ckx/candidate-password 2>/dev/null || echo "see /etc/ckx/candidate-password")
+PASS=$(cat /etc/k16s/candidate-password 2>/dev/null || echo "see /etc/k16s/candidate-password")
 
 echo ""
 echo -e "${GRN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
-echo -e "${GRN}  CKX provisioning complete!${RST}"
+echo -e "${GRN}  K16S provisioning complete!${RST}"
 echo -e "${GRN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RST}"
 echo ""
 echo -e "  Exam UI:      ${CYN}http://${NODE_IP}/${RST}"

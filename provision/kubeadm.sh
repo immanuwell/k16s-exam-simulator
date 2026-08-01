@@ -7,7 +7,7 @@ log_step "kubeadm / kubelet / kubectl"
 already_done "kubeadm" && { log_skip "kubeadm"; exit 0; }
 
 # v1.31 repo uses PGP v3 keys rejected by Debian 13's sqv verifier; use ≥1.32
-K8S_VERSION="${CKX_K8S_VERSION:-1.33}"
+K8S_VERSION="${K16S_K8S_VERSION:-1.33}"
 
 apt_install curl ca-certificates gnupg2 apt-transport-https
 

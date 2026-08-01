@@ -20,7 +20,7 @@ die() {
   exit 1
 }
 
-MARKER_DIR="/var/lib/ckx/markers"
+MARKER_DIR="/var/lib/k16s/markers"
 
 already_done() { [[ -f "${MARKER_DIR}/${1}.done" ]]; }
 

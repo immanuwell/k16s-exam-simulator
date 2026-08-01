@@ -8,7 +8,7 @@ already_done "nginx" && { log_skip "nginx"; exit 0; }
 
 apt_install nginx
 
-cat > /etc/nginx/sites-available/ckx <<'NGINXCONF'
+cat > /etc/nginx/sites-available/k16s <<'NGINXCONF'
 map $http_upgrade $connection_upgrade {
   default upgrade;
   ''      close;
@@ -46,7 +46,7 @@ server {
 }
 NGINXCONF
 
-ln -sf /etc/nginx/sites-available/ckx /etc/nginx/sites-enabled/ckx
+ln -sf /etc/nginx/sites-available/k16s /etc/nginx/sites-enabled/k16s
 rm -f /etc/nginx/sites-enabled/default
 
 nginx -t || die "nginx config test failed"

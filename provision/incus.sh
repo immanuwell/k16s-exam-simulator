@@ -6,9 +6,9 @@ log_step "Incus worker containers"
 
 already_done "incus" && { log_skip "Incus containers"; exit 0; }
 
-WORKER_COUNT="${CKX_WORKER_COUNT:-1}"
-BRIDGE_ADDR="${CKX_INCUS_BRIDGE:-10.10.0.1/24}"
-NODE_IMG="${CKX_NODE_IMAGE:-debian/12}"
+WORKER_COUNT="${K16S_WORKER_COUNT:-1}"
+BRIDGE_ADDR="${K16S_INCUS_BRIDGE:-10.10.0.1/24}"
+NODE_IMG="${K16S_NODE_IMAGE:-debian/12}"
 
 NET_BASE=$(echo "${BRIDGE_ADDR}" | cut -d/ -f1 | awk -F. '{print $1"."$2"."$3}')
 NODE_IP_START=11
@@ -35,7 +35,7 @@ modprobe br_netfilter
 # incus-init.sh started the download in background; wait for it here so the
 # container launches use the local cache instead of re-downloading.
 
-PREFETCH_PID_FILE="/var/lib/ckx/incus-prefetch.pid"
+PREFETCH_PID_FILE="/var/lib/k16s/incus-prefetch.pid"
 if [[ -f "${PREFETCH_PID_FILE}" ]]; then
   PID=$(cat "${PREFETCH_PID_FILE}")
   if kill -0 "${PID}" 2>/dev/null; then

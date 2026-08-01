@@ -4,10 +4,10 @@ source "$(dirname "$0")/lib.sh"
 
 log_step "Incus install + network init"
 
-NODE_IMG="${CKX_NODE_IMAGE:-debian/12}"
-BRIDGE_ADDR="${CKX_INCUS_BRIDGE:-10.10.0.1/24}"
+NODE_IMG="${K16S_NODE_IMAGE:-debian/12}"
+BRIDGE_ADDR="${K16S_INCUS_BRIDGE:-10.10.0.1/24}"
 NET_BASE=$(echo "${BRIDGE_ADDR}" | cut -d/ -f1 | awk -F. '{print $1"."$2"."$3}')
-PREFETCH_PID_FILE="/var/lib/ckx/incus-prefetch.pid"
+PREFETCH_PID_FILE="/var/lib/k16s/incus-prefetch.pid"
 
 _start_prefetch() {
   if incus image list local: --format csv 2>/dev/null | grep -q "debian/12"; then
@@ -16,7 +16,7 @@ _start_prefetch() {
   fi
   log_info "Downloading Incus base image in background (overlaps with kubeadm setup)..."
   nohup incus image copy "images:${NODE_IMG}" local: --copy-aliases \
-    > /var/log/ckx-incus-prefetch.log 2>&1 &
+    > /var/log/k16s-incus-prefetch.log 2>&1 &
   echo $! > "${PREFETCH_PID_FILE}"
 }
 

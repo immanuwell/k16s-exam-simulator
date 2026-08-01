@@ -6,10 +6,10 @@ log_step "Candidate user environment"
 
 already_done "candidate" && { log_skip "candidate user"; exit 0; }
 
-WORKER_COUNT="${CKX_WORKER_COUNT:-2}"
-NET_BASE="${CKX_NET_BASE:-10.10.0}"
+WORKER_COUNT="${K16S_WORKER_COUNT:-2}"
+NET_BASE="${K16S_NET_BASE:-10.10.0}"
 NODE_IP_START=11
-CANDIDATE_PASS="${CKX_CANDIDATE_PASS:-ckx-$(openssl rand -hex 4)}"
+CANDIDATE_PASS="${K16S_CANDIDATE_PASS:-k16s-$(openssl rand -hex 4)}"
 
 if ! id candidate &>/dev/null; then
   useradd -m -s /bin/bash candidate
@@ -17,8 +17,8 @@ if ! id candidate &>/dev/null; then
 fi
 
 echo "candidate:${CANDIDATE_PASS}" | chpasswd
-echo "${CANDIDATE_PASS}" > /etc/ckx/candidate-password
-chmod 600 /etc/ckx/candidate-password
+echo "${CANDIDATE_PASS}" > /etc/k16s/candidate-password
+chmod 600 /etc/k16s/candidate-password
 log_info "Candidate password: ${CANDIDATE_PASS}"
 
 mkdir -p /home/candidate/.kube

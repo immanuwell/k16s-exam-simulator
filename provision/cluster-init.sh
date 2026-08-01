@@ -6,15 +6,15 @@ log_step "kubeadm init"
 
 already_done "cluster-init" && { log_skip "kubeadm init"; exit 0; }
 
-NODE_IP="${CKX_NODE_IP:-$(ip route get 8.8.8.8 | grep -oP 'src \K[^ ]+')}"
+NODE_IP="${K16S_NODE_IP:-$(ip route get 8.8.8.8 | grep -oP 'src \K[^ ]+')}"
 log_info "Control plane IP: ${NODE_IP}"
 
-K8S_VERSION="${CKX_K8S_VERSION:-1.33}"
-POD_CIDR="${CKX_POD_CIDR:-10.244.0.0/16}"
-SVC_CIDR="${CKX_SVC_CIDR:-10.96.0.0/12}"
+K8S_VERSION="${K16S_K8S_VERSION:-1.33}"
+POD_CIDR="${K16S_POD_CIDR:-10.244.0.0/16}"
+SVC_CIDR="${K16S_SVC_CIDR:-10.96.0.0/12}"
 
-mkdir -p /etc/ckx
-cat > /etc/ckx/kubeadm-init.yaml <<EOF
+mkdir -p /etc/k16s
+cat > /etc/k16s/kubeadm-init.yaml <<EOF
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: InitConfiguration
 localAPIEndpoint:
@@ -48,7 +48,7 @@ cgroupDriver: systemd
 EOF
 
 log_info "Running kubeadm init (this takes ~2 minutes)..."
-kubeadm init --config /etc/ckx/kubeadm-init.yaml \
+kubeadm init --config /etc/k16s/kubeadm-init.yaml \
   --upload-certs \
   2>&1 | tee /var/log/kubeadm-init.log
 
@@ -63,9 +63,9 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane:NoSchedule- 2>/d
 log_ok "Control plane untainted"
 
 JOIN_CMD=$(kubeadm token create --print-join-command 2>/dev/null)
-echo "${JOIN_CMD}" > /etc/ckx/join-command.sh
-chmod 600 /etc/ckx/join-command.sh
-log_ok "Join command saved to /etc/ckx/join-command.sh"
+echo "${JOIN_CMD}" > /etc/k16s/join-command.sh
+chmod 600 /etc/k16s/join-command.sh
+log_ok "Join command saved to /etc/k16s/join-command.sh"
 
 mark_done "cluster-init"
 log_ok "Cluster initialized"
