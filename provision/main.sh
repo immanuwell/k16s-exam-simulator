@@ -18,7 +18,7 @@ echo ""
 
 EXAM_PROFILE="${CKX_PROFILE:-cka}"   # cka | cks | ckad
 K8S_VERSION="${CKX_K8S_VERSION:-1.33}"
-WORKER_COUNT="${CKX_WORKER_COUNT:-2}"
+WORKER_COUNT="${CKX_WORKER_COUNT:-1}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -49,10 +49,11 @@ run_step() {
 run_step preflight
 run_step kernel
 run_step containerd
-run_step kubeadm
-run_step cluster-init
-run_step cni
-run_step incus
+run_step incus-init   # install Incus + start base image download in background
+run_step kubeadm      # ← image downloads in parallel with this
+run_step cluster-init # ← and this
+run_step cni          # ← and this; image ready by the time we need containers
+run_step incus        # create worker containers (image already cached)
 run_step node-join
 run_step candidate
 run_step ttyd

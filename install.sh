@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # CKX — Self-Hosted Kubernetes Exam Platform
 # Usage:
-#   On the VM directly:  bash install.sh [--profile cka] [--k8s 1.33] [--workers 2]
+#   On the VM directly:  bash install.sh [--profile cka] [--k8s 1.33] [--workers 1]
 #   Targeting a remote:  bash install.sh --host 1.2.3.4 [--key ~/.ssh/id_ed25519]
 set -euo pipefail
 
@@ -28,16 +28,30 @@ if [[ -n "${REMOTE_HOST}" ]]; then
   SSH_OPTS=(-o StrictHostKeyChecking=no -o ConnectTimeout=10)
   [[ -n "${SSH_KEY}" ]] && SSH_OPTS+=(-i "${SSH_KEY}")
 
-  echo "→ Copying CKX scripts to ${SSH_USER}@${REMOTE_HOST}:/opt/ckx ..."
+  echo "→ Uploading CKX to ${SSH_USER}@${REMOTE_HOST}:/opt/ckx ..."
   ssh "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" "mkdir -p /opt/ckx"
+
+  # Sync entire repo; skip build artifacts and secrets
   rsync -az --delete \
-    "${SCRIPT_DIR}/provision/" \
-    "${SCRIPT_DIR}/exams/" \
+    --exclude='.git/' \
+    --exclude='*.md' \
+    --exclude='server/frontend/node_modules/' \
+    --exclude='server/frontend/build/' \
+    --exclude='server/frontend/.svelte-kit/' \
+    --exclude='.env' \
+    "${SCRIPT_DIR}/" \
     "${SSH_USER}@${REMOTE_HOST}:/opt/ckx/" \
     2>/dev/null \
-    || tar czf - -C "${SCRIPT_DIR}" provision/ exams/ \
-         | ssh "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" \
-             "cd /opt/ckx && tar xzf -"
+  || tar czf - \
+       -C "${SCRIPT_DIR}" \
+       --exclude='.git' \
+       --exclude='*.md' \
+       --exclude='server/frontend/node_modules' \
+       --exclude='server/frontend/build' \
+       --exclude='server/frontend/.svelte-kit' \
+       . \
+     | ssh "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" \
+         "cd /opt/ckx && tar xzf -"
 
   echo "→ Running provisioner on ${REMOTE_HOST} ..."
   ssh "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" \

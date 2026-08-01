@@ -2,84 +2,71 @@
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 
-log_step "Incus (worker node containers)"
+log_step "Incus worker containers"
 
-already_done "incus" && { log_skip "Incus setup"; exit 0; }
+already_done "incus" && { log_skip "Incus containers"; exit 0; }
 
-WORKER_COUNT="${CKX_WORKER_COUNT:-2}"
+WORKER_COUNT="${CKX_WORKER_COUNT:-1}"
 BRIDGE_ADDR="${CKX_INCUS_BRIDGE:-10.10.0.1/24}"
 NODE_IMG="${CKX_NODE_IMAGE:-debian/12}"
 
 NET_BASE=$(echo "${BRIDGE_ADDR}" | cut -d/ -f1 | awk -F. '{print $1"."$2"."$3}')
 NODE_IP_START=11
 
+# ── Ensure Incus is ready (self-contained fallback if incus-init wasn't run) ──
+
 if ! cmd_exists incus; then
-  source /etc/os-release
-  case "${ID}" in
-    debian)
-      apt-get update -q
-      apt_install incus dnsmasq-base
-      ;;
-    ubuntu)
-      curl -fsSL https://pkgs.zabbly.com/key.asc \
-        | gpg --dearmor --yes -o /etc/apt/keyrings/zabbly.gpg
-      echo "deb [signed-by=/etc/apt/keyrings/zabbly.gpg] \
-https://pkgs.zabbly.com/incus/stable $(. /etc/os-release; echo ${VERSION_CODENAME}) main" \
-        > /etc/apt/sources.list.d/zabbly-incus-stable.list
-      apt-get update -q
-      apt_install incus
-      ;;
-  esac
+  die "Incus is not installed — run incus-init step first"
 fi
-log_ok "Incus installed ($(incus version 2>/dev/null | head -1))"
 
 _incus_initialized() {
   incus storage list 2>/dev/null | grep -q default \
-    && incus network list 2>/dev/null | grep -q incusbr0 \
-    && incus profile show default 2>/dev/null | grep -q "pool: default"
+    && incus network list 2>/dev/null | grep -q incusbr0
 }
 
 if ! _incus_initialized; then
-  log_info "Initializing Incus..."
-
-  incus storage list 2>/dev/null | grep -q default \
-    || incus storage create default dir
-
-  incus network list 2>/dev/null | grep -q incusbr0 \
-    || incus network create incusbr0 \
-         ipv4.address="${BRIDGE_ADDR}" \
-         ipv4.dhcp=true \
-         "ipv4.dhcp.ranges=${NET_BASE}.2-${NET_BASE}.50" \
-         ipv4.nat=true \
-         ipv6.address=none
-
-  incus profile show default 2>/dev/null | grep -q "pool: default" || {
-    incus profile device add default root disk path=/ pool=default size=8GB 2>/dev/null || true
-    incus profile device add default eth0 nic nictype=bridged parent=incusbr0 2>/dev/null || true
-  }
-
-  log_ok "Incus initialized"
-else
-  log_skip "Incus already initialized"
+  die "Incus is not initialized — run incus-init step first"
 fi
 
-# Containers share the host kernel — ensure modules are loaded on host
 modprobe overlay
 modprobe br_netfilter
-log_ok "Host kernel modules ready for container use"
+
+# ── Wait for background image prefetch ────────────────────────────────────
+# incus-init.sh started the download in background; wait for it here so the
+# container launches use the local cache instead of re-downloading.
+
+PREFETCH_PID_FILE="/var/lib/ckx/incus-prefetch.pid"
+if [[ -f "${PREFETCH_PID_FILE}" ]]; then
+  PID=$(cat "${PREFETCH_PID_FILE}")
+  if kill -0 "${PID}" 2>/dev/null; then
+    log_info "Waiting for base image download to complete..."
+    wait "${PID}" 2>/dev/null || true
+  fi
+  rm -f "${PREFETCH_PID_FILE}"
+fi
+
+# Determine launch image: prefer local cache (faster), fallback to remote
+if incus image list local: --format csv 2>/dev/null | grep -q "debian/12"; then
+  LAUNCH_IMAGE="local:debian/12"
+  log_ok "Using locally cached base image"
+else
+  LAUNCH_IMAGE="images:${NODE_IMG}"
+  log_info "Base image not in local cache — will download during launch"
+fi
+
+# ── Create worker containers ───────────────────────────────────────────────
 
 for i in $(seq 1 "${WORKER_COUNT}"); do
   NAME="node0${i}"
   NODE_IP="${NET_BASE}.$((NODE_IP_START + i - 1))"
 
-  if incus list --format csv | grep -q "^${NAME},"; then
+  if incus list --format csv 2>/dev/null | grep -q "^${NAME},"; then
     log_skip "Container ${NAME} already exists"
     continue
   fi
 
-  log_info "Creating container ${NAME} (IP: ${NODE_IP})..."
-
-  incus launch "images:${NODE_IMG}" "${NAME}"
+  log_info "Creating container ${NAME} (${NODE_IP})..."
+  incus launch "${LAUNCH_IMAGE}" "${NAME}"
 
   incus config device override "${NAME}" eth0 \
     ipv4.address="${NODE_IP}" 2>/dev/null || true
@@ -108,13 +95,13 @@ done
 log_info "Waiting for containers to boot..."
 for i in $(seq 1 "${WORKER_COUNT}"); do
   NAME="node0${i}"
-  for attempt in $(seq 1 20); do
-    if incus exec "${NAME}" -- systemctl is-system-running --quiet 2>/dev/null | grep -qE "running|degraded"; then
+  for _ in $(seq 1 20); do
+    if incus exec "${NAME}" -- systemctl is-system-running --quiet 2>/dev/null; then
       break
     fi
     sleep 3
   done
-  log_ok "Container ${NAME} is running"
+  log_ok "Container ${NAME} is up"
 done
 
 for i in $(seq 1 "${WORKER_COUNT}"); do
@@ -125,11 +112,11 @@ done
 
 for i in $(seq 1 "${WORKER_COUNT}"); do
   NAME="node0${i}"
-  incus exec "${NAME}" -- hostnamectl set-hostname "${NAME}" 2>/dev/null || \
-    incus exec "${NAME}" -- hostname "${NAME}"
+  incus exec "${NAME}" -- hostnamectl set-hostname "${NAME}" 2>/dev/null \
+    || incus exec "${NAME}" -- hostname "${NAME}"
   incus exec "${NAME}" -- bash -c \
     "grep -q '127.0.1.1.*${NAME}' /etc/hosts || echo '127.0.1.1  ${NAME}' >> /etc/hosts"
 done
 
-log_ok "Incus setup complete: ${WORKER_COUNT} worker containers ready"
+log_ok "Incus: ${WORKER_COUNT} worker container(s) ready"
 mark_done "incus"

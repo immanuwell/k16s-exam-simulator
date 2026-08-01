@@ -6,6 +6,7 @@ log_step "CKX exam server"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "${SCRIPT_DIR}")"
+BINARY=/usr/local/bin/ckx-server
 
 # ── Tool installation (idempotent) ────────────────────────────────────────
 
@@ -15,8 +16,8 @@ if ! cmd_exists etcdctl; then
   ARCH=$(dpkg --print-architecture)
   ETCD_URL="https://github.com/etcd-io/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-${ARCH}.tar.gz"
   curl -fsSL "${ETCD_URL}" | tar xz -C /tmp
-  install /tmp/etcd-${ETCD_VERSION}-linux-${ARCH}/etcdctl /usr/local/bin/etcdctl
-  rm -rf /tmp/etcd-${ETCD_VERSION}-linux-${ARCH}
+  install "/tmp/etcd-${ETCD_VERSION}-linux-${ARCH}/etcdctl" /usr/local/bin/etcdctl
+  rm -rf "/tmp/etcd-${ETCD_VERSION}-linux-${ARCH}"
   log_ok "etcdctl ${ETCD_VERSION} installed"
 fi
 
@@ -26,57 +27,57 @@ if ! cmd_exists helm; then
   log_ok "helm installed"
 fi
 
-if ! cmd_exists go; then
-  log_info "Installing Go..."
-  GO_VERSION="1.23.8"
-  ARCH=$(dpkg --print-architecture | sed 's/amd64/amd64/; s/arm64/arm64/')
-  curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" | tar xz -C /usr/local
-  ln -sf /usr/local/go/bin/go /usr/local/bin/go
-  ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
-  log_ok "Go ${GO_VERSION} installed"
-fi
-
-if ! cmd_exists node; then
-  log_info "Installing Node.js (for frontend build)..."
-  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-  apt_install nodejs
-  log_ok "Node.js installed"
-fi
-
 # ── Exam data ─────────────────────────────────────────────────────────────
 
 mkdir -p /var/lib/ckx/exams
 
 if [[ -d "${REPO_ROOT}/exams" ]]; then
   cp -r "${REPO_ROOT}/exams/"* /var/lib/ckx/exams/
-  chmod -R +x /var/lib/ckx/exams/*/scripts 2>/dev/null || true
+  find /var/lib/ckx/exams -name "*.sh" -exec chmod +x {} \;
   log_ok "Exam data synced to /var/lib/ckx/exams"
 fi
 
-# ── Go binary ─────────────────────────────────────────────────────────────
+# ── Binary ────────────────────────────────────────────────────────────────
+# Long-term: download pre-built binary from GitHub Releases (no Go/Node on VM).
+# Until CI is set up, build from source if the binary isn't already present.
 
-if [[ -d "${REPO_ROOT}/server" ]]; then
-  log_info "Building ckx-server..."
+if [[ -f "${BINARY}" ]]; then
+  log_skip "ckx-server binary already exists (delete to force rebuild)"
+
+elif [[ -d "${REPO_ROOT}/server" ]]; then
+  log_info "Building ckx-server from source..."
+
+  if ! cmd_exists go; then
+    log_info "Installing Go..."
+    GO_VERSION="1.23.8"
+    ARCH=$(dpkg --print-architecture)
+    curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" | tar xz -C /usr/local
+    ln -sf /usr/local/go/bin/go    /usr/local/bin/go
+    ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+    log_ok "Go ${GO_VERSION} installed"
+  fi
+
+  if ! cmd_exists node; then
+    log_info "Installing Node.js..."
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+    apt_install nodejs
+    log_ok "Node.js $(node --version) installed"
+  fi
+
   pushd "${REPO_ROOT}/server" > /dev/null
-
   if [[ -d frontend/src ]]; then
-    log_info "Building frontend..."
     npm install --silent
     npm run build --silent
     log_ok "Frontend built"
   fi
-
   go mod tidy
-  go build -o /usr/local/bin/ckx-server .
+  go build -o "${BINARY}" .
   popd > /dev/null
-  log_ok "ckx-server binary installed"
-fi
+  log_ok "ckx-server built and installed"
 
-# ── Systemd service ───────────────────────────────────────────────────────
-
-BINARY=/usr/local/bin/ckx-server
-if [[ ! -f "${BINARY}" ]]; then
-  # Fallback placeholder if source was not uploaded
+else
+  # Fallback placeholder — serves a minimal JSON response until binary is deployed
+  log_warn "No source found at ${REPO_ROOT}/server — installing placeholder"
   cat > "${BINARY}" <<'PYSERVER'
 #!/usr/bin/env python3
 import http.server, socketserver, json, os
@@ -84,13 +85,20 @@ PORT = int(os.environ.get("CKX_PORT", "8080"))
 class H(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def do_GET(self):
-        b = json.dumps({"status":"ok","note":"placeholder"}).encode()
-        self.send_response(200); self.send_header("Content-Type","application/json"); self.send_header("Content-Length",len(b)); self.end_headers(); self.wfile.write(b)
-with socketserver.TCPServer(("127.0.0.1",PORT),H) as h: print(f"placeholder on {PORT}",flush=True); h.serve_forever()
+        b = json.dumps({"status": "ok", "note": "placeholder — deploy ckx-server binary"}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", len(b))
+        self.end_headers()
+        self.wfile.write(b)
+with socketserver.TCPServer(("127.0.0.1", PORT), H) as h:
+    print(f"CKX placeholder on :{PORT}", flush=True)
+    h.serve_forever()
 PYSERVER
   chmod +x "${BINARY}"
-  log_ok "Placeholder server installed"
 fi
+
+# ── Systemd service ───────────────────────────────────────────────────────
 
 cat > /etc/systemd/system/ckx-server.service <<EOF
 [Unit]
