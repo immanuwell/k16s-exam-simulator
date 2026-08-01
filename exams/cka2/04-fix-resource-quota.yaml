@@ -1,0 +1,45 @@
+id: 04-fix-resource-quota
+title: Fix Deployment Blocked by ResourceQuota
+weight: 5
+context: ""
+description: |
+  Namespace `quota-demo` has a `ResourceQuota` that requires all pods to declare
+  CPU and memory requests. The deployment `quota-app` currently has **0/3** pods
+  running because no resource requests are set.
+
+  1. Check the current state:
+     ```
+     kubectl get pods -n quota-demo
+     kubectl describe replicaset -n quota-demo
+     kubectl describe resourcequota -n quota-demo
+     ```
+  2. Edit the deployment `quota-app` to add resource **requests** (and limits) to
+     each container so all 3 replicas can schedule:
+     - CPU request: `100m`, limit: `200m`
+     - Memory request: `64Mi`, limit: `128Mi`
+
+  3. Verify all 3 pods are Running:
+     ```
+     kubectl get pods -n quota-demo
+     ```
+
+  4. Save the quota usage after the fix:
+     ```
+     kubectl describe resourcequota -n quota-demo > /opt/cka2/quota-fix.txt
+     ```
+hint: |
+  The ReplicaSet events will show: `exceeded quota: ... must specify limits.cpu, limits.memory, requests.cpu, requests.memory`.
+  Edit the deployment:
+  ```
+  kubectl edit deployment quota-app -n quota-demo
+  ```
+  Add under `spec.template.spec.containers[0]`:
+  ```yaml
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+  ```

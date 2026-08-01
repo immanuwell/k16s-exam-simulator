@@ -1,0 +1,40 @@
+id: 13-headless-service
+title: Headless Service and DNS Resolution
+weight: 5
+context: ""
+description: |
+  A **headless service** (no ClusterIP) enables direct pod-to-pod discovery via DNS.
+  Each pod gets its own DNS A record instead of a single virtual IP.
+
+  1. Create a **StatefulSet** named `db` in namespace `headless-demo`:
+     - Image: `nginx:alpine`
+     - Replicas: 2
+     - The StatefulSet must reference the headless service via `serviceName: db-headless`
+
+  2. Create a **headless Service** named `db-headless` in namespace `headless-demo`:
+     - `clusterIP: None`
+     - Selector: `app: db`
+     - Port: `80`
+
+  3. Verify DNS resolution from inside the cluster. Create a **temporary debug pod**:
+     ```
+     kubectl run dns-test -n headless-demo --image=busybox:1.36 --rm -it \
+       -- nslookup db-headless.headless-demo.svc.cluster.local
+     ```
+     The response should list individual pod IPs (not a single VIP).
+
+  4. Also resolve a specific pod by FQDN:
+     ```
+     kubectl run dns-test2 -n headless-demo --image=busybox:1.36 --rm -it \
+       -- nslookup db-0.db-headless.headless-demo.svc.cluster.local
+     ```
+
+  5. Save the headless service definition:
+     ```
+     kubectl get svc db-headless -n headless-demo -o yaml > /opt/cka2/headless-svc.yaml
+     ```
+hint: |
+  The key is `clusterIP: None` in the Service spec. For StatefulSets, `serviceName`
+  must match the headless service name — this is what generates per-pod DNS records.
+  Pod FQDN format: `<pod-name>.<service-name>.<namespace>.svc.cluster.local`
+  So pod `db-0` gets: `db-0.db-headless.headless-demo.svc.cluster.local`

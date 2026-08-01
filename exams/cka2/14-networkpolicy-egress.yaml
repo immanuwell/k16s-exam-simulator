@@ -1,0 +1,55 @@
+id: 14-networkpolicy-egress
+title: Egress NetworkPolicy with DNS Exception
+weight: 6
+context: ""
+description: |
+  Restrict outbound traffic from pods in namespace `egress-demo` so they can only
+  reach the `backend` namespace and resolve DNS.
+
+  The namespace `egress-demo` contains a deployment `frontend`. The namespace
+  `backend` contains a deployment `api`.
+
+  Create **two NetworkPolicy** resources in namespace `egress-demo`:
+
+  **Policy 1 — Ingress:** Allow ingress to `frontend` pods only from pods labeled
+  `role: client` in namespace `egress-demo`.
+
+  **Policy 2 — Egress:** Allow `frontend` pods to send traffic only to:
+  - Pods in namespace `backend` on port `8080`
+  - DNS (port `53`, UDP and TCP) — to any destination
+
+  No other egress should be permitted.
+
+  Verify the policies are created:
+  ```
+  kubectl get networkpolicy -n egress-demo
+  ```
+
+  Save the egress policy:
+  ```
+  kubectl get networkpolicy frontend-egress -n egress-demo -o yaml \
+    > /opt/cka2/egress-policy.yaml
+  ```
+hint: |
+  Egress NetworkPolicy example with namespace selector + DNS exception:
+  ```yaml
+  spec:
+    podSelector:
+      matchLabels:
+        app: frontend
+    policyTypes:
+    - Egress
+    egress:
+    - to:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: backend
+      ports:
+      - port: 8080
+    - ports:
+      - port: 53
+        protocol: UDP
+      - port: 53
+        protocol: TCP
+  ```
+  Label the namespace: `kubectl label namespace backend kubernetes.io/metadata.name=backend`

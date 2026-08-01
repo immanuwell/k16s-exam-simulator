@@ -1,0 +1,40 @@
+id: 09-kustomize
+title: Apply a Kustomize Overlay
+weight: 5
+context: ""
+description: |
+  A Kustomize base configuration has been prepared at `/opt/cka2/kustomize/base/`.
+  A **production** overlay is at `/opt/cka2/kustomize/overlays/production/`.
+
+  The overlay:
+  - Deploys into namespace `kustomize-demo`
+  - Patches the replica count to **3**
+  - Adds the label `env: production` to all resources
+
+  Your tasks:
+
+  1. Preview the rendered manifest and save it:
+     ```
+     kubectl kustomize /opt/cka2/kustomize/overlays/production/ \
+       > /opt/cka2/kustomize-output.yaml
+     ```
+
+  2. Apply the overlay to create the resources:
+     ```
+     kubectl apply -k /opt/cka2/kustomize/overlays/production/
+     ```
+
+  3. Verify the deployment is running with 3 replicas:
+     ```
+     kubectl get deployment web -n kustomize-demo
+     kubectl get pods -n kustomize-demo --show-labels
+     ```
+
+  4. Confirm the `env: production` label is set on the pods.
+hint: |
+  `kubectl kustomize` renders without applying; `kubectl apply -k` renders and applies.
+  Both commands are built into `kubectl` — no separate `kustomize` binary needed.
+  Inspect the overlay before applying:
+  ```
+  cat /opt/cka2/kustomize/overlays/production/kustomization.yaml
+  ```

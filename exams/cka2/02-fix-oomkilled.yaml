@@ -1,0 +1,37 @@
+id: 02-fix-oomkilled
+title: Fix an OOMKilled Pod
+weight: 4
+context: ""
+description: |
+  The deployment `mem-hog` in namespace `mem-demo` has all its pods in a
+  `OOMKilled` crash loop. The container is being killed because its memory
+  limit is too low for normal operation.
+
+  1. Investigate the pod status:
+     ```
+     kubectl describe pod -l app=mem-hog -n mem-demo
+     ```
+  2. Edit the deployment `mem-hog` and set the container memory **limit** to
+     `128Mi` and memory **request** to `64Mi`
+  3. Verify the pods come up Running:
+     ```
+     kubectl get pods -n mem-demo
+     ```
+  4. Save the pod status to `/opt/cka2/oomkilled-fix.txt`:
+     ```
+     kubectl get pods -n mem-demo > /opt/cka2/oomkilled-fix.txt
+     ```
+hint: |
+  The `Last State` section in `kubectl describe pod` shows `Reason: OOMKilled`.
+  Edit the deployment:
+  ```
+  kubectl edit deployment mem-hog -n mem-demo
+  ```
+  Under `spec.template.spec.containers[0].resources`:
+  ```yaml
+  resources:
+    requests:
+      memory: "64Mi"
+    limits:
+      memory: "128Mi"
+  ```

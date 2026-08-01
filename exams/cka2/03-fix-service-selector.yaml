@@ -1,0 +1,32 @@
+id: 03-fix-service-selector
+title: Fix a Broken Service Selector
+weight: 4
+context: ""
+description: |
+  The service `backend-svc` in namespace `selector-demo` has **zero endpoints**
+  even though pods are running. Traffic cannot reach the pods.
+
+  1. Investigate why the service has no endpoints:
+     ```
+     kubectl get endpoints backend-svc -n selector-demo
+     kubectl describe service backend-svc -n selector-demo
+     kubectl get pods -n selector-demo --show-labels
+     ```
+  2. Fix the service selector so it matches the running pod labels
+
+  3. Verify endpoints are populated:
+     ```
+     kubectl get endpoints backend-svc -n selector-demo
+     ```
+
+  4. Save the endpoint details to `/opt/cka2/service-fix.txt`:
+     ```
+     kubectl get endpoints backend-svc -n selector-demo -o yaml > /opt/cka2/service-fix.txt
+     ```
+hint: |
+  Compare the pod labels with the service `spec.selector`.
+  Edit the service:
+  ```
+  kubectl edit service backend-svc -n selector-demo
+  ```
+  After fixing, endpoints should list at least one pod IP + port.

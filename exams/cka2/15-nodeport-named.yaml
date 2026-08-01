@@ -1,0 +1,49 @@
+id: 15-nodeport-named
+title: Named Container Port and NodePort Service
+weight: 4
+context: ""
+description: |
+  Kubernetes Services can reference container ports by **name** instead of number,
+  which makes configurations more resilient to port changes.
+
+  The deployment `web-app` in namespace `svc-demo` runs `nginx:alpine` but its
+  container port is unnamed.
+
+  1. **Edit the Deployment** to add a name to the container port:
+     ```yaml
+     ports:
+     - name: http
+       containerPort: 80
+     ```
+
+  2. **Create a Service** named `web-svc` of type `NodePort` in `svc-demo`:
+     - `protocol: TCP`
+     - `port: 80`
+     - `targetPort: http`  ← reference the named port
+     - Let Kubernetes auto-assign the `nodePort`
+
+  3. **Verify** the service has endpoints:
+     ```
+     kubectl get endpoints web-svc -n svc-demo
+     ```
+
+  4. **Test connectivity** from any node:
+     ```
+     NODE_IP=$(kubectl get node node01 -o jsonpath='{.status.addresses[0].address}')
+     NODE_PORT=$(kubectl get svc web-svc -n svc-demo -o jsonpath='{.spec.ports[0].nodePort}')
+     curl http://$NODE_IP:$NODE_PORT/
+     ```
+
+  5. Save the NodePort number to `/opt/cka2/nodeport.txt`:
+     ```
+     kubectl get svc web-svc -n svc-demo \
+       -o jsonpath='{.spec.ports[0].nodePort}' > /opt/cka2/nodeport.txt
+     ```
+hint: |
+  Expose via imperative command, then edit to use named targetPort:
+  ```
+  kubectl expose deployment web-app -n svc-demo \
+    --type=NodePort --port=80 --name=web-svc
+  kubectl edit svc web-svc -n svc-demo
+  # change targetPort from 80 to http
+  ```

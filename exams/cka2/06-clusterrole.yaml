@@ -1,0 +1,46 @@
+id: 06-clusterrole
+title: ClusterRole and ClusterRoleBinding for Node Inspection
+weight: 5
+context: ""
+description: |
+  Create cluster-wide RBAC resources so a ServiceAccount can inspect nodes.
+
+  1. Create a **ServiceAccount** named `node-inspector` in namespace `inspect-ns`
+
+  2. Create a **ClusterRole** named `node-reader` with permissions:
+     - Resources: `nodes`, `nodes/status`
+     - Verbs: `get`, `list`, `watch`
+
+  3. Create a **ClusterRoleBinding** named `node-inspector-binding` that binds
+     `node-reader` to ServiceAccount `node-inspector` in namespace `inspect-ns`
+
+  4. Verify the access:
+     ```
+     kubectl auth can-i list nodes \
+       --as=system:serviceaccount:inspect-ns:node-inspector
+     ```
+     The output must be `yes`.
+
+  5. Verify it cannot delete nodes:
+     ```
+     kubectl auth can-i delete nodes \
+       --as=system:serviceaccount:inspect-ns:node-inspector
+     ```
+     The output must be `no`.
+
+  6. Save the verification results:
+     ```
+     kubectl auth can-i list nodes \
+       --as=system:serviceaccount:inspect-ns:node-inspector \
+       > /opt/cka2/node-inspector-check.txt
+     ```
+hint: |
+  ClusterRole (not Role) because node access is cluster-scoped:
+  ```
+  kubectl create clusterrole node-reader \
+    --resource=nodes,nodes/status \
+    --verb=get,list,watch
+  kubectl create clusterrolebinding node-inspector-binding \
+    --clusterrole=node-reader \
+    --serviceaccount=inspect-ns:node-inspector
+  ```

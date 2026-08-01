@@ -1,0 +1,45 @@
+id: 10-priority-class
+title: Create a PriorityClass and Assign it to a Deployment
+weight: 5
+context: ""
+description: |
+  Kubernetes scheduling priority allows critical workloads to preempt lower-priority
+  pods when resources are scarce.
+
+  1. Create a **PriorityClass** named `high-priority-apps`:
+     - `value`: `1000000`
+     - `globalDefault`: `false`
+     - `description`: `"High priority for production applications"`
+
+  2. Create a **Deployment** named `priority-web` in namespace `priority-demo`:
+     - Image: `nginx:alpine`
+     - Replicas: 2
+     - Use `priorityClassName: high-priority-apps`
+
+  3. Verify the pods use the priority class:
+     ```
+     kubectl get pods -n priority-demo -o custom-columns=\
+     NAME:.metadata.name,PRIORITY:.spec.priority
+     ```
+
+  4. Save the PriorityClass definition:
+     ```
+     kubectl get priorityclass high-priority-apps -o yaml \
+       > /opt/cka2/priority-class.yaml
+     ```
+hint: |
+  PriorityClass is a cluster-scoped resource (no namespace):
+  ```yaml
+  apiVersion: scheduling.k8s.io/v1
+  kind: PriorityClass
+  metadata:
+    name: high-priority-apps
+  value: 1000000
+  globalDefault: false
+  description: "High priority for production applications"
+  ```
+  Add to the Deployment pod spec:
+  ```yaml
+  spec:
+    priorityClassName: high-priority-apps
+  ```

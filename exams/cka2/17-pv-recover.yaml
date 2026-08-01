@@ -1,0 +1,57 @@
+id: 17-pv-recover
+title: Recover a Released PersistentVolume
+weight: 6
+context: controlplane
+description: |
+  A **PersistentVolume** `recovered-data` exists with `reclaimPolicy: Retain`.
+  Its previous PVC was deleted, so the PV is now in `Released` state — it still
+  holds data but cannot be claimed by a new PVC while the old `claimRef` remains.
+
+  1. Confirm the PV state:
+     ```
+     kubectl get pv recovered-data
+     ```
+     Status should be `Released`.
+
+  2. **Clear the claimRef** so the PV becomes `Available`:
+     ```
+     kubectl patch pv recovered-data --type=json \
+       -p='[{"op":"remove","path":"/spec/claimRef"}]'
+     ```
+
+  3. Create namespace `archive-ns`:
+     ```
+     kubectl create namespace archive-ns
+     ```
+
+  4. Create a **PVC** named `archive-new` in namespace `archive-ns` that binds
+     **specifically** to `recovered-data` by setting `volumeName`:
+     ```yaml
+     spec:
+       accessModes: [ReadWriteOnce]
+       resources:
+         requests:
+           storage: 500Mi
+       storageClassName: archive
+       volumeName: recovered-data
+     ```
+
+  5. Create a **Pod** named `archive-pod` in `archive-ns` using `nginx:alpine`
+     that mounts `archive-new` at `/data`.
+
+  6. Verify the PVC is `Bound` and the pod is `Running`:
+     ```
+     kubectl get pvc archive-new -n archive-ns
+     kubectl get pod archive-pod -n archive-ns
+     ```
+
+  7. Save the PV/PVC status:
+     ```
+     kubectl get pv recovered-data && \
+     kubectl get pvc archive-new -n archive-ns > /opt/cka2/pv-recover.txt
+     ```
+hint: |
+  `Retain` policy keeps the PV data alive after PVC deletion but leaves it
+  in `Released` — not automatically reusable. The `claimRef` patch removes
+  the stale binding reference. Use `volumeName` in the new PVC to force
+  binding to the specific PV (bypasses the usual storageClass matching).

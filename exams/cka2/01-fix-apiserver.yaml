@@ -1,0 +1,39 @@
+id: 01-fix-apiserver
+title: Fix the Broken kube-apiserver
+weight: 8
+context: controlplane
+description: |
+  The `kube-apiserver` on this node has been misconfigured and is no longer reachable.
+  `kubectl` commands will fail until you fix the static pod manifest.
+
+  **Symptoms:** `kubectl get nodes` returns a connection error.
+
+  **Your task:**
+
+  1. Inspect the static pod manifest at `/etc/kubernetes/manifests/kube-apiserver.yaml`
+  2. Find and correct **two** problems that were introduced:
+     - One of the `--etcd-servers` port numbers is wrong
+     - An unrecognised flag was added
+  3. Save the manifest — the kubelet will restart the apiserver automatically
+  4. Wait for `kubectl` to respond, then run:
+     ```
+     kubectl get nodes > /opt/cka2/apiserver-fix.txt
+     ```
+
+  **Hint for diagnosis (no kubectl):**
+  ```
+  crictl ps -a | grep apiserver
+  crictl logs <container-id>
+  ```
+hint: |
+  etcd listens on port `2379` (client) and `2380` (peer). The apiserver must talk to the client port.
+  After editing the manifest, kubelet detects the change and restarts the pod within ~30 seconds.
+  Watch progress:
+  ```
+  watch crictl ps | grep apiserver
+  ```
+  Wait until the container shows `Running`, then verify:
+  ```
+  kubectl get nodes
+  kubectl get pods -n kube-system
+  ```

@@ -1,0 +1,47 @@
+id: 08-manual-scheduling
+title: Manually Schedule a Pod Without the Scheduler
+weight: 4
+context: ""
+description: |
+  The pod `manual-pod` in namespace `schedule-demo` is stuck in `Pending`
+  because the kube-scheduler is ignoring it (it has been assigned a custom
+  `schedulerName` that does not exist). Manually schedule it to `node01`
+  by setting the `nodeName` field directly.
+
+  1. Confirm the pod is Pending:
+     ```
+     kubectl get pod manual-pod -n schedule-demo
+     kubectl describe pod manual-pod -n schedule-demo
+     ```
+
+  2. Export the pod manifest:
+     ```
+     kubectl get pod manual-pod -n schedule-demo -o yaml > /tmp/manual-pod.yaml
+     ```
+
+  3. Delete the pod, edit the manifest to:
+     - Remove the `schedulerName` field (or set it to `default-scheduler`)
+     - Add `nodeName: node01` under `spec:`
+
+  4. Re-create the pod:
+     ```
+     kubectl apply -f /tmp/manual-pod.yaml
+     ```
+
+  5. Verify the pod is Running on `node01`:
+     ```
+     kubectl get pod manual-pod -n schedule-demo -o wide
+     ```
+
+  6. Save the result:
+     ```
+     kubectl get pod manual-pod -n schedule-demo -o wide > /opt/cka2/manual-schedule.txt
+     ```
+hint: |
+  `nodeName` bypasses the scheduler entirely — the kubelet on that node picks up
+  the pod directly. Alternatively, patch the running pod:
+  ```
+  kubectl patch pod manual-pod -n schedule-demo \
+    --type=merge -p '{"spec":{"nodeName":"node01","schedulerName":"default-scheduler"}}'
+  ```
+  Note: patching a running pod's `nodeName` is not always allowed — delete + recreate is safer.

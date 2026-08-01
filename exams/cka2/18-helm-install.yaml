@@ -1,0 +1,49 @@
+id: 18-helm-install
+title: Install a Helm Chart and Template Without CRDs
+weight: 6
+context: ""
+description: |
+  Use **Helm** to render and install a pre-prepared chart. The chart is available
+  locally at `/opt/cka2/charts/webapp/`.
+
+  1. **Preview** the rendered manifest without installing, and skip any CRD templates:
+     ```
+     helm template webapp /opt/cka2/charts/webapp/ \
+       --skip-crds \
+       --namespace helm-demo \
+       > /opt/cka2/webapp-manifest.yaml
+     ```
+     Inspect the output — it should contain a `Deployment` and a `Service`.
+
+  2. **Install** the chart into namespace `helm-demo`:
+     ```
+     helm install webapp /opt/cka2/charts/webapp/ \
+       --skip-crds \
+       --create-namespace \
+       --namespace helm-demo
+     ```
+
+  3. Verify the release and pods:
+     ```
+     helm list -n helm-demo
+     kubectl get pods -n helm-demo
+     ```
+
+  4. Save the Helm release list and pod status:
+     ```
+     helm list -n helm-demo > /opt/cka2/helm-list.txt
+     kubectl get pods -n helm-demo >> /opt/cka2/helm-list.txt
+     ```
+
+  **Bonus:** Upgrade the release to set `replicaCount=2`:
+  ```
+  helm upgrade webapp /opt/cka2/charts/webapp/ \
+    --namespace helm-demo \
+    --set replicaCount=2
+  ```
+hint: |
+  Key Helm flags:
+  - `--skip-crds`: renders/installs without applying CRD manifests
+  - `helm template`: dry-run render to stdout — useful to inspect before applying
+  - `helm list`: shows deployed releases; `STATUS=deployed` means success
+  - `helm upgrade`: updates an existing release with new values

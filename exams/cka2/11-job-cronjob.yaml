@@ -1,0 +1,44 @@
+id: 11-job-cronjob
+title: Create a Job and a CronJob
+weight: 4
+context: ""
+description: |
+  Run batch workloads using Kubernetes Job and CronJob primitives.
+
+  **Part 1 — Job**
+
+  Create a **Job** named `db-backup` in namespace `batch-demo`:
+  - Image: `busybox:1.36`
+  - Command: `sh -c "echo backup-$(date +%s) > /tmp/backup.txt && cat /tmp/backup.txt"`
+  - `restartPolicy: Never`
+  - `backoffLimit: 2`
+
+  Wait for it to complete:
+  ```
+  kubectl wait --for=condition=complete job/db-backup -n batch-demo --timeout=60s
+  ```
+
+  **Part 2 — CronJob**
+
+  Create a **CronJob** named `cleanup-logs` in namespace `batch-demo`:
+  - Image: `busybox:1.36`
+  - Schedule: every **5 minutes** (`*/5 * * * *`)
+  - Command: `sh -c "find /tmp -name '*.log' -delete && echo cleaned"`
+  - `successfulJobsHistoryLimit: 3`
+  - `failedJobsHistoryLimit: 1`
+
+  **Save status:**
+  ```
+  kubectl get job db-backup -n batch-demo > /opt/cka2/job-status.txt
+  kubectl get cronjob cleanup-logs -n batch-demo >> /opt/cka2/job-status.txt
+  ```
+hint: |
+  Generate manifests quickly:
+  ```
+  kubectl create job db-backup -n batch-demo \
+    --image=busybox:1.36 -- sh -c "echo backup-\$(date +%s) > /tmp/backup.txt && cat /tmp/backup.txt"
+  kubectl create cronjob cleanup-logs -n batch-demo \
+    --image=busybox:1.36 --schedule='*/5 * * * *' \
+    -- sh -c "find /tmp -name '*.log' -delete && echo cleaned"
+  ```
+  Then patch to set `backoffLimit`, `successfulJobsHistoryLimit`, `failedJobsHistoryLimit`.

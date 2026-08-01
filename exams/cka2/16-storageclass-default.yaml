@@ -1,0 +1,49 @@
+id: 16-storageclass-default
+title: Create a Default StorageClass
+weight: 5
+context: ""
+description: |
+  The cluster currently has no default `StorageClass`. PVCs that omit
+  `storageClassName` will remain `Pending` until a default is set.
+
+  1. Create a **StorageClass** named `fast-storage`:
+     - Provisioner: `kubernetes.io/no-provisioner`
+     - `volumeBindingMode: WaitForFirstConsumer`
+     - Annotation: `storageclass.kubernetes.io/is-default-class: "true"`
+
+  2. Verify it is marked as the default:
+     ```
+     kubectl get storageclass
+     ```
+     The `fast-storage` entry should show `(default)` next to its name.
+
+  3. Create a **PVC** named `test-claim` in namespace `storage-test` that uses
+     the default StorageClass (omit `storageClassName`):
+     ```yaml
+     spec:
+       accessModes: [ReadWriteOnce]
+       resources:
+         requests:
+           storage: 100Mi
+     ```
+
+  4. Verify the PVC uses the default StorageClass:
+     ```
+     kubectl get pvc test-claim -n storage-test \
+       -o jsonpath='{.spec.storageClassName}'
+     ```
+
+  5. Save StorageClass details:
+     ```
+     kubectl get storageclass > /opt/cka2/storageclass.txt
+     ```
+hint: |
+  The default annotation must be a string `"true"`, not a boolean:
+  ```yaml
+  metadata:
+    name: fast-storage
+    annotations:
+      storageclass.kubernetes.io/is-default-class: "true"
+  ```
+  `WaitForFirstConsumer` means the volume is only provisioned when a pod
+  using the PVC is scheduled — important for local storage.

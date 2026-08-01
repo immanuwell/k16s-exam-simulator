@@ -1,0 +1,34 @@
+id: 05-event-logging
+title: Investigate Cluster Events and Pod Failures
+weight: 4
+context: ""
+description: |
+  A pod `problem-pod` in namespace `event-demo` keeps failing. Use `kubectl` event
+  commands to investigate and document the failure.
+
+  1. List all events in the `event-demo` namespace and save them:
+     ```
+     kubectl get events -n event-demo --sort-by='.lastTimestamp' > /opt/cka2/events.txt
+     ```
+
+  2. Filter only `Warning` events cluster-wide and save:
+     ```
+     kubectl get events -A --field-selector type=Warning \
+       --sort-by='.lastTimestamp' > /opt/cka2/warning-events.txt
+     ```
+
+  3. Find the **reason** the `problem-pod` is failing (e.g. `ImagePullBackOff`,
+     `CrashLoopBackOff`, `OOMKilled`) and save it:
+     ```
+     kubectl get events -n event-demo \
+       --field-selector involvedObject.name=problem-pod \
+       -o jsonpath='{range .items[*]}{.reason}{"\n"}{end}' \
+       | sort -u > /opt/cka2/pod-failure-reason.txt
+     ```
+
+  4. **Do not fix** the pod — just document the failure.
+hint: |
+  `kubectl get events` is your primary tool. Sort by time with `--sort-by='.lastTimestamp'`.
+  Filter by namespace with `-n event-demo` or cluster-wide with `-A`.
+  Filter by object: `--field-selector involvedObject.name=problem-pod`
+  Filter by type: `--field-selector type=Warning`
