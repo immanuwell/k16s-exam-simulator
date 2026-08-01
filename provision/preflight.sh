@@ -49,13 +49,11 @@ log_ok "Swap: disabled"
 grep -q cgroup2 /proc/mounts || die "cgroup v2 not mounted — kernel or systemd too old"
 log_ok "cgroup v2 mounted"
 
-CURRENT_HOSTNAME=$(hostname)
-if [[ "${CURRENT_HOSTNAME}" == "localhost" || "${CURRENT_HOSTNAME}" == "" ]]; then
-  hostnamectl set-hostname controlplane
-  log_info "Hostname set to controlplane"
-else
-  log_ok "Hostname: ${CURRENT_HOSTNAME}"
+if [[ "$(hostname)" != "k16s" ]]; then
+  hostnamectl set-hostname k16s
+  log_info "Hostname set to k16s"
 fi
+log_ok "Hostname: $(hostname)"
 
 grep -q "$(hostname)" /etc/hosts || echo "127.0.1.1  $(hostname)" >> /etc/hosts
 
