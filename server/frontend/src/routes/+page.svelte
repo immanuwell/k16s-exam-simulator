@@ -27,6 +27,22 @@
   );
   let totalPoints = $derived(questions.reduce((acc, q) => acc + q.weight, 0));
 
+  let ckaProfiles = $derived((profiles.length ? profiles : ['cka']).filter(p => p.startsWith('cka')));
+  let cksProfiles = $derived((profiles.length ? profiles : ['cks']).filter(p => p.startsWith('cks')));
+
+  function labelFor(p, group) {
+    const sorted = [...group].sort();
+    const prefix = p.startsWith('cka') ? 'CKA' : 'CKS';
+    return `${prefix} ${sorted.indexOf(p) + 1}`;
+  }
+
+  function examLabel(p) {
+    const group = (profiles.length ? profiles : [p]).filter(x =>
+      x.startsWith(p.startsWith('cka') ? 'cka' : 'cks')
+    );
+    return labelFor(p, group);
+  }
+
   let timeClass = $derived(
     timeLeft < 300 ? 'text-red-400 animate-pulse' :
     timeLeft < 600 ? 'text-amber-400' :
@@ -214,14 +230,36 @@
       <div>
         <div class="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">Exam Profile</div>
         <div class="flex gap-2">
-          {#each (profiles.length ? profiles : ['cka', 'ckad', 'cks']) as p}
-            <button
-              onclick={() => profile = p}
-              class="flex-1 py-2 rounded text-sm font-medium transition-colors {profile === p
-                ? 'bg-[#3b82f6] text-white'
-                : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
-            >{p.toUpperCase()}</button>
-          {/each}
+          {#if ckaProfiles.length}
+            <div class="flex-1 border border-[#2a2f42] rounded-md px-2 pt-1.5 pb-2 space-y-1.5">
+              <div class="text-[10px] text-slate-600 uppercase tracking-widest text-center">CKA</div>
+              <div class="flex gap-1.5">
+                {#each ckaProfiles.sort() as p}
+                  <button
+                    onclick={() => profile = p}
+                    class="flex-1 py-1.5 rounded text-sm font-medium transition-colors {profile === p
+                      ? 'bg-[#3b82f6] text-white'
+                      : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+                  >{labelFor(p, ckaProfiles)}</button>
+                {/each}
+              </div>
+            </div>
+          {/if}
+          {#if cksProfiles.length}
+            <div class="flex-1 border border-[#2a2f42] rounded-md px-2 pt-1.5 pb-2 space-y-1.5">
+              <div class="text-[10px] text-slate-600 uppercase tracking-widest text-center">CKS</div>
+              <div class="flex gap-1.5">
+                {#each cksProfiles.sort() as p}
+                  <button
+                    onclick={() => profile = p}
+                    class="flex-1 py-1.5 rounded text-sm font-medium transition-colors {profile === p
+                      ? 'bg-[#3b82f6] text-white'
+                      : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+                  >{labelFor(p, cksProfiles)}</button>
+                {/each}
+              </div>
+            </div>
+          {/if}
         </div>
       </div>
 
@@ -255,7 +293,7 @@
     <!-- Header -->
     <div class="flex-none bg-[#1e2230] border-b border-[#2a2f42] px-4 py-2 flex items-center gap-3">
       <img src="/logo.svg" alt="K16S" class="h-5 shrink-0" />
-      <span class="text-slate-600 text-sm shrink-0 hidden sm:block">{session?.profile?.toUpperCase()}</span>
+      <span class="text-slate-600 text-sm shrink-0 hidden sm:block">{session?.profile ? examLabel(session.profile) : ''}</span>
 
       <!-- Question nav pills -->
       <div class="flex gap-1 flex-wrap flex-1 min-w-0 overflow-hidden">
@@ -373,7 +411,7 @@
         <span class="text-slate-500 text-2xl">/{totalPoints}</span>
       </div>
       <div class="text-slate-400 text-sm">
-        {session?.profile?.toUpperCase()} — {Math.round((score / (totalPoints || 1)) * 100)}% score
+        {session?.profile ? examLabel(session.profile) : ''} — {Math.round((score / (totalPoints || 1)) * 100)}% score
       </div>
     </div>
 
