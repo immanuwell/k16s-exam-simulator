@@ -4,9 +4,10 @@ source "$(dirname "$0")/lib.sh"
 
 log_step "CKX exam server"
 
-already_done "ckx-server" && { log_skip "ckx-server"; exit 0; }
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "${SCRIPT_DIR}")"
 
-mkdir -p /etc/ckx /var/lib/ckx
+# ── Tool installation (idempotent) ────────────────────────────────────────
 
 if ! cmd_exists etcdctl; then
   log_info "Installing etcdctl..."
@@ -25,40 +26,73 @@ if ! cmd_exists helm; then
   log_ok "helm installed"
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "${SCRIPT_DIR}")"
-if [[ -d "${REPO_ROOT}/exams" ]]; then
-  mkdir -p /var/lib/ckx/exams
-  cp -r "${REPO_ROOT}/exams/"* /var/lib/ckx/exams/ 2>/dev/null || true
-  log_ok "Exam data copied to /var/lib/ckx/exams"
+if ! cmd_exists go; then
+  log_info "Installing Go..."
+  GO_VERSION="1.23.8"
+  ARCH=$(dpkg --print-architecture | sed 's/amd64/amd64/; s/arm64/arm64/')
+  curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" | tar xz -C /usr/local
+  ln -sf /usr/local/go/bin/go /usr/local/bin/go
+  ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+  log_ok "Go ${GO_VERSION} installed"
 fi
 
-# Placeholder until the Go binary is built
-if ! cmd_exists ckx-server 2>/dev/null; then
-  cat > /usr/local/bin/ckx-server-placeholder <<'PYSERVER'
+if ! cmd_exists node; then
+  log_info "Installing Node.js (for frontend build)..."
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  apt_install nodejs
+  log_ok "Node.js installed"
+fi
+
+# ── Exam data ─────────────────────────────────────────────────────────────
+
+mkdir -p /var/lib/ckx/exams
+
+if [[ -d "${REPO_ROOT}/exams" ]]; then
+  cp -r "${REPO_ROOT}/exams/"* /var/lib/ckx/exams/
+  chmod -R +x /var/lib/ckx/exams/*/scripts 2>/dev/null || true
+  log_ok "Exam data synced to /var/lib/ckx/exams"
+fi
+
+# ── Go binary ─────────────────────────────────────────────────────────────
+
+if [[ -d "${REPO_ROOT}/server" ]]; then
+  log_info "Building ckx-server..."
+  pushd "${REPO_ROOT}/server" > /dev/null
+
+  if [[ -d frontend/src ]]; then
+    log_info "Building frontend..."
+    npm install --silent
+    npm run build --silent
+    log_ok "Frontend built"
+  fi
+
+  go mod tidy
+  go build -o /usr/local/bin/ckx-server .
+  popd > /dev/null
+  log_ok "ckx-server binary installed"
+fi
+
+# ── Systemd service ───────────────────────────────────────────────────────
+
+BINARY=/usr/local/bin/ckx-server
+if [[ ! -f "${BINARY}" ]]; then
+  # Fallback placeholder if source was not uploaded
+  cat > "${BINARY}" <<'PYSERVER'
 #!/usr/bin/env python3
 import http.server, socketserver, json, os
-
 PORT = int(os.environ.get("CKX_PORT", "8080"))
-
-class Handler(http.server.BaseHTTPRequestHandler):
-    def log_message(self, fmt, *args): pass
+class H(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
     def do_GET(self):
-        body = json.dumps({"status": "ok", "path": self.path}).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", len(body))
-        self.end_headers()
-        self.wfile.write(body)
-
-with socketserver.TCPServer(("127.0.0.1", PORT), Handler) as httpd:
-    print(f"CKX placeholder listening on 127.0.0.1:{PORT}", flush=True)
-    httpd.serve_forever()
+        b = json.dumps({"status":"ok","note":"placeholder"}).encode()
+        self.send_response(200); self.send_header("Content-Type","application/json"); self.send_header("Content-Length",len(b)); self.end_headers(); self.wfile.write(b)
+with socketserver.TCPServer(("127.0.0.1",PORT),H) as h: print(f"placeholder on {PORT}",flush=True); h.serve_forever()
 PYSERVER
-  chmod +x /usr/local/bin/ckx-server-placeholder
+  chmod +x "${BINARY}"
+  log_ok "Placeholder server installed"
 fi
 
-cat > /etc/systemd/system/ckx-server.service <<'EOF'
+cat > /etc/systemd/system/ckx-server.service <<EOF
 [Unit]
 Description=CKX Exam Server
 After=network.target
@@ -68,8 +102,10 @@ Type=simple
 User=root
 WorkingDirectory=/var/lib/ckx
 Environment=CKX_PORT=8080
-Environment=KUBECONFIG=/root/.kube/config
-ExecStart=/usr/local/bin/ckx-server-placeholder
+Environment=CKX_DB=/var/lib/ckx/ckx.db
+Environment=CKX_EXAM_DIR=/var/lib/ckx/exams
+Environment=KUBECONFIG=/etc/kubernetes/admin.conf
+ExecStart=${BINARY}
 Restart=on-failure
 RestartSec=5
 
@@ -78,7 +114,6 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now ckx-server.service
-log_ok "ckx-server service started (placeholder)"
-
-mark_done "ckx-server"
+systemctl enable ckx-server
+systemctl restart ckx-server
+log_ok "ckx-server service started"

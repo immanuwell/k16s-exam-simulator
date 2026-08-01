@@ -1,0 +1,21 @@
+id: 04-persistent-volume
+title: Create a PersistentVolume and Claim
+weight: 5
+context: ""
+description: |
+  Create the following Kubernetes storage objects:
+
+  **PersistentVolume** named `data-pv`:
+  - Capacity: `1Gi`
+  - Access mode: `ReadWriteOnce`
+  - Reclaim policy: `Retain`
+  - Storage class: `manual`
+  - Host path: `/mnt/data`
+
+  **PersistentVolumeClaim** named `data-pvc` in namespace `default`:
+  - Requests: `500Mi`
+  - Access mode: `ReadWriteOnce`
+  - Storage class: `manual`
+
+  The PVC must be in **Bound** state.
+hint: "The PV and PVC storageClassName must match. Use `kubectl get pv,pvc` to verify the Bound status."

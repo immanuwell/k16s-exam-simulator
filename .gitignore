@@ -1,6 +1,9 @@
 # Build artifacts
 /server/ckx-server
 /server/dist/
+/server/frontend/build/
+/server/frontend/node_modules/
+/server/frontend/.svelte-kit/
 *.o
 *.a
 
