@@ -41,6 +41,11 @@ server {
     proxy_send_timeout 86400;
     proxy_buffering    off;
     proxy_cache        off;
+
+    # Prevent ttyd from sending gzip so sub_filter can rewrite HTML
+    proxy_set_header   Accept-Encoding   "";
+    sub_filter '<head>' '<head><link rel="icon" href="/favicon.ico" sizes="any">';
+    sub_filter_once    on;
   }
 }
 NGINXCONF
