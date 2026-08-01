@@ -398,7 +398,19 @@
           src="/terminal/"
           title="Terminal"
           class="absolute inset-0 w-full h-full border-0"
-          onload={() => terminalIframe?.contentWindow?.focus()}
+          onload={() => {
+            const win = terminalIframe?.contentWindow;
+            if (!win) return;
+            win.focus();
+            win.document.addEventListener('keydown', (e) => {
+              if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'C') {
+                e.preventDefault();
+                e.stopPropagation();
+                const text = win.term?.getSelection?.();
+                if (text) navigator.clipboard.writeText(text).catch(() => {});
+              }
+            }, true);
+          }}
         ></iframe>
       </div>
 
