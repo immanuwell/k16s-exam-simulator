@@ -32,8 +32,7 @@ User=root
 ExecStart=/usr/local/bin/ttyd \
   --port 7681 \
   --interface 127.0.0.1 \
-  --uid 1000 \
-  --gid 1000 \
+  --writable \
   login -f candidate
 Restart=on-failure
 RestartSec=5

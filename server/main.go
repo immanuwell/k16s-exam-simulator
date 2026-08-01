@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-//go:embed frontend/build
+//go:embed all:frontend/build
 var frontendFiles embed.FS
 
 func main() {

@@ -66,8 +66,7 @@ elif [[ -d "${REPO_ROOT}/server" ]]; then
 
   pushd "${REPO_ROOT}/server" > /dev/null
   if [[ -d frontend/src ]]; then
-    npm install --silent
-    npm run build --silent
+    (cd frontend && npm install --silent && npm run build --silent)
     log_ok "Frontend built"
   fi
   go mod tidy
