@@ -1,0 +1,17 @@
+id: 03-netpol-microseg
+title: Microsegmentation — Deny All Ingress, Selective Worker Egress
+weight: 6
+context: ""
+description: |
+  Namespace `netpol-internal` contains pods with labels `role=worker`, `role=api`, and `role=metrics`.
+
+  1. Create a **NetworkPolicy** named `deny-all-ingress` in `netpol-internal` that:
+     - Applies to **all pods** (empty podSelector)
+     - Denies all ingress (`policyTypes: [Ingress]` only, no ingress rules)
+
+  2. Create a **NetworkPolicy** named `worker-egress-internal` in `netpol-internal` that:
+     - Applies to pods with label `role=worker`
+     - Allows egress to pods with label `role=api` on **TCP port 7000**
+     - Allows egress to pods with label `role=metrics` on **TCP port 9100**
+     - Denies all other egress (`policyTypes: [Egress]`)
+hint: "For deny-all-ingress: `podSelector: {}` selects all pods, and setting `policyTypes: [Ingress]` with no `ingress:` key enforces the deny. For worker-egress-internal: use two separate `egress` rules, each with a `podSelector` and a single port."

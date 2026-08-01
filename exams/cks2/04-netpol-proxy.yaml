@@ -1,0 +1,16 @@
+id: 04-netpol-proxy
+title: Lock Down Proxy Pods with Ingress and Egress Allowlists
+weight: 5
+context: ""
+description: |
+  Namespace `netpol-proxy` contains pods with label `app=proxy`.
+  Namespace `edge` exists but is not yet labelled.
+
+  1. Label namespace `edge` with `team=edge`
+
+  2. Create a **NetworkPolicy** named `proxy-lockdown` in namespace `netpol-proxy` that:
+     - Applies to pods with label `app=proxy`
+     - Allows **ingress** from namespaces labelled `team=edge` on **TCP port 3128**
+     - Allows **egress** to the CIDR block `10.20.0.0/16` on **TCP port 443**
+     - `policyTypes`: both `Ingress` and `Egress` (all other traffic is denied)
+hint: "Set `policyTypes: [Ingress, Egress]` so the policy enforces both directions. Use `namespaceSelector` for the ingress rule and `ipBlock` for the egress rule."

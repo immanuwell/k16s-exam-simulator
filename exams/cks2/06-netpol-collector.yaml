@@ -1,0 +1,16 @@
+id: 06-netpol-collector
+title: Lock Down Log Collector Ingress and Egress
+weight: 5
+context: ""
+description: |
+  Namespace `netpol-logs` contains pods with labels `app=collector` and `role=shipper`.
+  Namespace `logging` exists but is not yet labelled.
+
+  1. Label namespace `logging` with `purpose=logging`
+
+  2. Create a **NetworkPolicy** named `collector-lockdown` in `netpol-logs` that:
+     - Applies to pods with label `app=collector`
+     - Allows **ingress** from pods with label `role=shipper` in the **same namespace** on **TCP port 5000**
+     - Allows **egress** to pods in namespaces labelled `purpose=logging` on **TCP port 5044** and **TCP port 9200**
+     - `policyTypes`: both `Ingress` and `Egress`
+hint: "The egress rule needs two port entries (5044 and 9200) in a single `egress` rule with a `namespaceSelector` matching `purpose=logging`. Setting `policyTypes: [Ingress, Egress]` enforces both directions."

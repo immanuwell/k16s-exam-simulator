@@ -1,0 +1,18 @@
+id: 08-seccomp-override
+title: Override Pod-Level Seccomp with a Container Localhost Profile
+weight: 6
+context: controlplane
+description: |
+  A seccomp profile `profiles/allow-read.json` already exists at
+  `/var/lib/kubelet/seccomp/profiles/allow-read.json` on `controlplane`.
+
+  Create a Pod named `seccomp-override` in namespace `seccomp-override` that
+  demonstrates per-container seccomp override:
+
+  1. **Pod-level** seccompProfile: `type: RuntimeDefault`
+  2. **Container-level** seccompProfile override on the single container:
+     - `type: Localhost`
+     - `localhostProfile: profiles/allow-read.json`
+  3. Container: image `nginx:alpine`, `nodeName: controlplane`
+  4. Save the Pod YAML to `/opt/cks2-seccomp/seccomp-override.yaml`
+hint: "Set `securityContext.seccompProfile` at both `spec` level (RuntimeDefault) and at `spec.containers[0]` level (Localhost). The container-level profile takes precedence. The `localhostProfile` path is relative to `/var/lib/kubelet/seccomp/`."

@@ -1,0 +1,25 @@
+id: 11-aa-read-hosts
+title: Create an AppArmor Profile Restricting /proc/sys Writes
+weight: 5
+context: controlplane
+description: |
+  Create and apply a custom AppArmor profile that allows reading `/etc/hosts` but
+  denies writing to the `/proc/sys` filesystem.
+
+  1. Create an AppArmor profile at `/etc/apparmor.d/k8s-read-hosts`:
+     - `#include <abstractions/base>`
+     - Allow **read** access to `/etc/hosts`
+     - Deny **write** access to `/proc/sys/**`
+
+  2. Load the profile:
+     ```
+     apparmor_parser -r -W /etc/apparmor.d/k8s-read-hosts
+     ```
+
+  3. Create a Pod named `hosts-check` in namespace `apparmor-hosts`:
+     - Image: `busybox:latest`, command: `sleep 3600`, container name: `app`
+     - `nodeName: controlplane`
+     - Apply the AppArmor profile `k8s-read-hosts` to the container
+
+  4. Save the Pod YAML to `/opt/cks2-apparmor/hosts-check.yaml`
+hint: "In the profile body, use `/etc/hosts r,` to allow reads and `deny /proc/sys/** w,` to block writes. Load with `apparmor_parser -r -W`. Apply via `securityContext.appArmorProfile.localhostProfile: k8s-read-hosts` or the legacy annotation."

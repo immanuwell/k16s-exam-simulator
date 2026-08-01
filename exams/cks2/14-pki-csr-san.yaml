@@ -1,0 +1,22 @@
+id: 14-pki-csr-san
+title: Create a CSR with Subject Alternative Names
+weight: 5
+context: controlplane
+description: |
+  A private key and a CSR config file have been prepared:
+  - Key: `/opt/cks2-pki/svc.key`
+  - Config: `/opt/cks2-pki/svc-csr.conf` (includes SANs for `svc.internal`, `svc.cluster.local`, and IP `10.96.0.1`)
+
+  Create a CSR at `/opt/cks2-pki/svc.csr` using the config file so that the SANs are embedded:
+
+  ```
+  openssl req -new -key /opt/cks2-pki/svc.key \
+    -out /opt/cks2-pki/svc.csr \
+    -config /opt/cks2-pki/svc-csr.conf
+  ```
+
+  Verify the SANs are present:
+  ```
+  openssl req -in /opt/cks2-pki/svc.csr -noout -text | grep -A1 "Subject Alternative"
+  ```
+hint: "The `-config` flag makes openssl read the `[v3_req]` extension block which contains the SANs. Without it, the CSR is created without extensions. Check the config file contents with `cat /opt/cks2-pki/svc-csr.conf`."

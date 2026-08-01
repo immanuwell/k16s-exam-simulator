@@ -1,0 +1,25 @@
+id: 05-netpol-matchexpr
+title: Ingress with matchExpressions Pod Selector
+weight: 6
+context: ""
+description: |
+  Namespace `netpol-expressions` contains:
+  - Pods with label `app=backend`
+  - Pods with label `tier=frontend`
+  - Pods with label `tier=api`
+
+  Create a **NetworkPolicy** named `backend-allow-tier` in `netpol-expressions` that:
+  - Applies to pods with label `app=backend`
+  - Allows **ingress** on **TCP port 8080** from pods in the **same namespace** where the label `tier` has the value `frontend` **or** `api`
+  - Use `matchExpressions` (not `matchLabels`) for the pod selector in the ingress rule
+  - Denies all other ingress
+hint: |
+  Use `matchExpressions` in the ingress `from[].podSelector`:
+  ```yaml
+  podSelector:
+    matchExpressions:
+    - key: tier
+      operator: In
+      values: [frontend, api]
+  ```
+  No `namespaceSelector` is needed — an ingress rule with only a `podSelector` and no `namespaceSelector` scopes to the same namespace.

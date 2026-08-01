@@ -1,0 +1,16 @@
+id: 16-pki-verify
+title: Verify a Certificate Against a CA
+weight: 3
+context: controlplane
+description: |
+  Two files have been prepared:
+  - Certificate to verify: `/opt/cks2-pki/verify.crt`
+  - CA certificate: `/opt/cks2-pki/verify-ca.crt`
+
+  1. Verify the certificate using OpenSSL:
+     ```
+     openssl verify -CAfile /opt/cks2-pki/verify-ca.crt /opt/cks2-pki/verify.crt
+     ```
+  2. Save the verification output to `/opt/cks2-pki/verify-result.txt`
+     (the file should contain the `OK` line)
+hint: "Redirect the command output: `openssl verify -CAfile verify-ca.crt verify.crt > verify-result.txt 2>&1`. A successful verify prints `verify.crt: OK`."

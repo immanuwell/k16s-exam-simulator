@@ -1,0 +1,30 @@
+id: 09-seccomp-remediate
+title: Audit and Remediate Pods Without Seccomp
+weight: 7
+context: controlplane
+description: |
+  Pod `no-seccomp` exists in namespace `seccomp-audit` without a seccomp profile.
+
+  1. List all pods in the cluster that have **no seccomp profile** (seccompProfile absent or type `Unconfined`).
+     Save the list to `/opt/cks2-seccomp/pods-without-seccomp.txt` in the format `namespace/podname`, one entry per line.
+
+  2. **Replace** pod `no-seccomp` in namespace `seccomp-audit`:
+     - Delete the existing pod
+     - Recreate it with `seccompProfile: {type: RuntimeDefault}`
+     - Image: `nginx:alpine`, `nodeName: controlplane`
+
+  3. Save the new pod YAML to `/opt/cks2-seccomp/no-seccomp.yaml`
+hint: |
+  To find pods without seccomp:
+  ```bash
+  kubectl get pods -A -o json | python3 -c "
+  import sys,json
+  for item in json.load(sys.stdin)['items']:
+      sc=item['spec'].get('securityContext',{}).get('seccompProfile',{})
+      t=sc.get('type','')
+      if t in ('','Unconfined'):
+          ns=item['metadata']['namespace']
+          name=item['metadata']['name']
+          print(f'{ns}/{name}')
+  "
+  ```

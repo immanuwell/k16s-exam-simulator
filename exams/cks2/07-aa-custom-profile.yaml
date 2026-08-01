@@ -1,0 +1,35 @@
+id: 07-aa-custom-profile
+title: Create a Custom AppArmor Profile for /tmp Writes
+weight: 7
+context: controlplane
+description: |
+  Create and apply a custom AppArmor profile that allows writes to `/tmp` but blocks writes to `/etc`.
+
+  1. Create an AppArmor profile at `/etc/apparmor.d/k8s-allow-tmp` with:
+     - `#include <abstractions/base>`
+     - Allow read/write on `/tmp/**`
+     - Deny write access to `/etc/**`
+
+  2. Load the profile:
+     ```
+     apparmor_parser -r -W /etc/apparmor.d/k8s-allow-tmp
+     ```
+
+  3. Create a Pod named `tmp-writer` in namespace `apparmor-2`:
+     - Image: `busybox:latest`, command: `sleep 3600`, container name: `app`
+     - `nodeName: controlplane`
+     - Apply the AppArmor profile `k8s-allow-tmp` to the container
+
+  4. Save the Pod YAML to `/opt/cks2-apparmor/tmp-writer.yaml`
+hint: |
+  Profile skeleton:
+  ```
+  #include <tunables/global>
+  profile k8s-allow-tmp flags=(attach_disconnected,mediate_deleted) {
+    #include <abstractions/base>
+    /tmp/** rw,
+    deny /etc/** w,
+    file, network, capability,
+  }
+  ```
+  Apply via `securityContext.appArmorProfile` (K8s 1.30+) or the legacy annotation `container.apparmor.security.beta.kubernetes.io/app: localhost/k8s-allow-tmp`.

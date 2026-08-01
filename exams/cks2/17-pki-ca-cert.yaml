@@ -1,0 +1,19 @@
+id: 17-pki-ca-cert
+title: Create a Self-Signed CA Certificate
+weight: 5
+context: controlplane
+description: |
+  A private key exists at `/opt/cks2-pki/ca2.key` (4096-bit RSA).
+
+  Create a **self-signed CA certificate** at `/opt/cks2-pki/ca2.crt`:
+  - Subject CN: `cluster-ca`
+  - Validity: **730 days**
+  - Must be a CA certificate (use the `-x509` flag, which sets Basic Constraints: CA:TRUE)
+
+  ```
+  openssl req -new -x509 -key /opt/cks2-pki/ca2.key \
+    -out /opt/cks2-pki/ca2.crt \
+    -days 730 \
+    -subj "/CN=cluster-ca"
+  ```
+hint: "Self-signed certs created with `openssl req -x509` automatically set CA:TRUE in Basic Constraints. Verify with `openssl x509 -in ca2.crt -noout -text | grep -A1 'Basic Constraints'`."

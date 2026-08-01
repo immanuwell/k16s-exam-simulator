@@ -1,0 +1,16 @@
+id: 01-netpol-api-ingress
+title: Cross-Namespace Ingress for API Pods
+weight: 4
+context: ""
+description: |
+  Namespace `netpol-cross` contains pods with labels `app=api` and `role=frontend`.
+  Namespace `ops-tools` exists but is not yet labelled.
+
+  1. Label namespace `ops-tools` with `team=ops`
+
+  2. Create a **NetworkPolicy** named `api-ingress` in namespace `netpol-cross` that:
+     - Applies to pods with label `app=api`
+     - Allows **ingress** from pods with label `role=frontend` in the **same namespace** on **TCP port 8081**
+     - Allows **ingress** from pods in namespaces labelled `team=ops` on **TCP port 8443**
+     - Denies all other ingress
+hint: "Use two separate ingress rules — one with `podSelector: {matchLabels: {role: frontend}}` (no namespaceSelector, so it scopes to the same namespace), and one with only `namespaceSelector: {matchLabels: {team: ops}}`."

@@ -1,0 +1,16 @@
+id: 13-pki-inspect
+title: Inspect a Server Certificate
+weight: 3
+context: controlplane
+description: |
+  A server certificate exists at `/opt/cks2-pki/server.crt`.
+
+  1. Use OpenSSL to output the **full certificate details** (text output)
+  2. Save the output to `/opt/cks2-pki/server-crt.txt`
+  3. The output must include the **Subject CN** and **SAN** (Subject Alternative Name) entries
+
+  Verify your output with:
+  ```
+  cat /opt/cks2-pki/server-crt.txt
+  ```
+hint: "Use `openssl x509 -in /opt/cks2-pki/server.crt -noout -text > /opt/cks2-pki/server-crt.txt`. The `-text` flag outputs all fields including SANs."

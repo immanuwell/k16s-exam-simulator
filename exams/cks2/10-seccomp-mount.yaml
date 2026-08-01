@@ -1,0 +1,19 @@
+id: 10-seccomp-mount
+title: Block Mount Syscalls via Seccomp on a Deployment
+weight: 6
+context: controlplane
+description: |
+  Deployment `mount-block` exists in namespace `seccomp-mount` without a seccomp profile.
+
+  1. Create a seccomp profile at `/var/lib/kubelet/seccomp/profiles/block-mount.json`:
+     - `defaultAction`: `SCMP_ACT_ALLOW`
+     - Block syscalls `mount` and `umount2` with action `SCMP_ACT_ERRNO`
+
+  2. Patch Deployment `mount-block` to apply this profile at the pod level:
+     - `securityContext.seccompProfile.type: Localhost`
+     - `securityContext.seccompProfile.localhostProfile: profiles/block-mount.json`
+
+  3. Wait for the rollout to complete (`kubectl rollout status`)
+
+  4. Copy the profile to `/opt/cks2-seccomp/block-mount.json`
+hint: "Use `kubectl patch deployment mount-block -n seccomp-mount --type=merge` with the seccompProfile JSON, or edit the deployment directly. The Deployment pods pin to `nodeName: controlplane` where the profile lives."

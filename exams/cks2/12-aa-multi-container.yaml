@@ -1,0 +1,36 @@
+id: 12-aa-multi-container
+title: Apply Different AppArmor Profiles to Two Containers
+weight: 7
+context: controlplane
+description: |
+  Two AppArmor profiles are already loaded on `controlplane`:
+  - `k8s-readonly` — denies all file writes
+  - `k8s-tmpwrite` — allows writes to `/tmp/**`, denies all other writes
+
+  Create a Pod named `multi-aa` in namespace `apparmor-multi` with **two containers**,
+  each using a different AppArmor profile:
+
+  | Container | Image | Command | AppArmor Profile |
+  |-----------|-------|---------|-----------------|
+  | `c1` | `busybox:latest` | `sleep 3600` | `k8s-readonly` |
+  | `c2` | `busybox:latest` | `sleep 3600` | `k8s-tmpwrite` |
+
+  - `nodeName: controlplane` (pod spec)
+  - Save the Pod YAML to `/opt/cks2-apparmor/multi-aa.yaml`
+hint: |
+  Per-container AppArmor can be set via native `securityContext` (K8s 1.30+):
+  ```yaml
+  containers:
+  - name: c1
+    securityContext:
+      appArmorProfile:
+        type: Localhost
+        localhostProfile: k8s-readonly
+  - name: c2
+    securityContext:
+      appArmorProfile:
+        type: Localhost
+        localhostProfile: k8s-tmpwrite
+  ```
+  Or via pod annotations (one annotation per container):
+  `container.apparmor.security.beta.kubernetes.io/c1: localhost/k8s-readonly`

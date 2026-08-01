@@ -1,0 +1,15 @@
+id: 18-pki-b64-dates
+title: Extract Validity Dates from a Base64-Encoded Certificate
+weight: 4
+context: controlplane
+description: |
+  A base64-encoded certificate exists at `/opt/cks2-pki/embedded-ca.b64`.
+
+  1. Decode the certificate and extract its **Not Before** and **Not After** dates
+  2. Save the two dates to `/opt/cks2-pki/embedded-ca-dates.txt` (one date per line)
+
+  ```bash
+  base64 -d /opt/cks2-pki/embedded-ca.b64 | \
+    openssl x509 -noout -dates > /opt/cks2-pki/embedded-ca-dates.txt
+  ```
+hint: "Pipe `base64 -d` directly to `openssl x509` — openssl reads PEM from stdin when no `-in` file is given. The output includes `notBefore=` and `notAfter=` lines."

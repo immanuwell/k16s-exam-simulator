@@ -1,0 +1,22 @@
+id: 02-netpol-db-egress
+title: Restrict Backend Egress to Database and DNS
+weight: 5
+context: ""
+description: |
+  Namespace `netpol-db-egress` contains pods with label `app=backend`.
+  Namespace `data-store` exists (unlabelled) and contains pods with label `app=db`.
+
+  1. Label namespace `data-store` with `tier=database`
+
+  2. Create a **NetworkPolicy** named `deny-egress-all` in `netpol-db-egress` that:
+     - Applies to **all pods** in the namespace
+     - Denies all egress (`policyTypes: [Egress]`, empty egress rules)
+
+  3. Create a **NetworkPolicy** named `backend-egress-db` in `netpol-db-egress` that:
+     - Applies to pods with label `app=backend`
+     - Allows egress to pods with label `app=db` in namespaces with label `tier=database` on **TCP port 5432**
+
+  4. Create a **NetworkPolicy** named `allow-dns` in `netpol-db-egress` that:
+     - Applies to **all pods**
+     - Allows egress to namespace `kube-system` on **UDP port 53** and **TCP port 53**
+hint: "Label the data-store namespace first. The deny-egress-all policy needs an empty `egress: []` list and `policyTypes: [Egress]`. For DNS, use `namespaceSelector` matching the kube-system namespace label `kubernetes.io/metadata.name: kube-system`."

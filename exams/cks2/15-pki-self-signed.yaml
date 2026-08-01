@@ -1,0 +1,18 @@
+id: 15-pki-self-signed
+title: Create a Self-Signed Certificate
+weight: 4
+context: controlplane
+description: |
+  A private key exists at `/opt/cks2-pki/self.key`.
+
+  Create a **self-signed** certificate at `/opt/cks2-pki/self.crt`:
+  - Subject CN: `self-signed`
+  - Validity: **365 days**
+
+  ```
+  openssl req -new -x509 -key /opt/cks2-pki/self.key \
+    -out /opt/cks2-pki/self.crt \
+    -days 365 \
+    -subj "/CN=self-signed"
+  ```
+hint: "The `-x509` flag turns `openssl req` into a self-sign command — no separate CA needed. Verify with `openssl x509 -in /opt/cks2-pki/self.crt -noout -subject -dates`."
