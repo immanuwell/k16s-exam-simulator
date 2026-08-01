@@ -1,0 +1,20 @@
+id: 05-resource-usage
+title: Identify Highest Resource-Consuming Pods
+weight: 4
+context: ""
+description: |
+  Use the Kubernetes metrics server to find resource-hungry pods.
+
+  1. Find the pod consuming the **most CPU** across all namespaces and save its name to `/opt/cka/top-cpu-pod.txt`
+
+  2. Find the pod consuming the **most memory** across all namespaces and save its name to `/opt/cka/top-mem-pod.txt`
+
+  3. Find the **node** consuming the most CPU and save its name to `/opt/cka/top-cpu-node.txt`
+
+  **Format:** each file must contain only the pod or node name, one per line.
+hint: |
+  ```
+  kubectl top pods -A --sort-by=cpu --no-headers | head -1 | awk '{print $2}'
+  kubectl top pods -A --sort-by=memory --no-headers | head -1 | awk '{print $2}'
+  kubectl top nodes --sort-by=cpu --no-headers | head -1 | awk '{print $1}'
+  ```

@@ -1,0 +1,39 @@
+id: 18-pv-pvc-pod
+title: PersistentVolume, PVC, and Pod with Volume Mount
+weight: 6
+context: controlplane
+description: |
+  Provision persistent storage for an application using a `hostPath` PersistentVolume.
+
+  1. Create a **PersistentVolume** named `data-pv`:
+     - Storage: `500Mi`
+     - Access mode: `ReadWriteOnce`
+     - Reclaim policy: `Retain`
+     - `storageClassName: manual`
+     - Type: `hostPath` at path `/mnt/exam-data` on the node
+
+  2. Create a **PersistentVolumeClaim** named `data-pvc` in namespace `storage-demo`:
+     - Requests `200Mi`
+     - Access mode: `ReadWriteOnce`
+     - `storageClassName: manual`
+     - The PVC must **Bind** to `data-pv`
+
+  3. Create a **Pod** named `data-pod` in namespace `storage-demo`:
+     - Image: `nginx:alpine`
+     - Mount the PVC at `/usr/share/nginx/html`
+
+  4. Verify the PVC is Bound and the pod is Running:
+     ```
+     kubectl get pvc data-pvc -n storage-demo
+     kubectl get pod data-pod -n storage-demo
+     ```
+
+  5. Save the PVC status to `/opt/cka/pvc-status.txt`
+hint: |
+  PV and PVC bind when: storageClassName matches, accessModes match, and the PVC capacity
+  request is ≤ PV capacity.
+  The `hostPath` path must exist on the node — create it if needed:
+  ```
+  mkdir -p /mnt/exam-data
+  ```
+  After creating the Pod, save: `kubectl get pvc data-pvc -n storage-demo > /opt/cka/pvc-status.txt`

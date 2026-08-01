@@ -1,0 +1,36 @@
+id: 08-rbac
+title: RBAC — ServiceAccount, Role, and RoleBinding
+weight: 6
+context: ""
+description: |
+  Set up fine-grained RBAC access for an application in namespace `rbac-demo`.
+
+  1. Create a **ServiceAccount** named `pod-reader` in namespace `rbac-demo`
+
+  2. Create a **Role** named `pod-reader-role` in namespace `rbac-demo` that allows:
+     - `get`, `list`, `watch` on `pods`
+     - `get`, `list` on `pods/log`
+
+  3. Create a **RoleBinding** named `pod-reader-binding` that binds `pod-reader-role` to the `pod-reader` ServiceAccount
+
+  4. Verify the permissions:
+     ```
+     kubectl auth can-i get pods \
+       --as=system:serviceaccount:rbac-demo:pod-reader \
+       -n rbac-demo
+     ```
+     This must output `yes`.
+
+  5. Save the output of `kubectl auth can-i get secrets --as=system:serviceaccount:rbac-demo:pod-reader -n rbac-demo` to `/opt/cka/rbac-check.txt` (expected: `no`)
+hint: |
+  ```bash
+  kubectl create serviceaccount pod-reader -n rbac-demo
+  kubectl create role pod-reader-role \
+    --verb=get,list,watch --resource=pods \
+    --verb=get,list --resource=pods/log \
+    -n rbac-demo
+  kubectl create rolebinding pod-reader-binding \
+    --role=pod-reader-role \
+    --serviceaccount=rbac-demo:pod-reader \
+    -n rbac-demo
+  ```

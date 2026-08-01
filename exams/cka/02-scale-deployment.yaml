@@ -1,9 +1,0 @@
-id: 02-scale-deployment
-title: Scale a Deployment
-weight: 2
-context: ""
-description: |
-  A Deployment named `web-app` exists in namespace `webns`.
-
-  Scale it to **4 replicas** and ensure all replicas are running.
-hint: "Use `kubectl scale deployment web-app -n webns --replicas=4`, or edit the Deployment manifest with `kubectl edit`."

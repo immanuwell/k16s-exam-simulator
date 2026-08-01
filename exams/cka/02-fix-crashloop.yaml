@@ -1,0 +1,25 @@
+id: 02-fix-crashloop
+title: Fix a CrashLoopBackOff Pod
+weight: 5
+context: ""
+description: |
+  A pod named `api-server` in namespace `crash-demo` is stuck in `CrashLoopBackOff`.
+
+  1. Investigate the root cause using `kubectl logs` and `kubectl describe`
+  2. Fix the issue so that the pod enters a `Running` state
+  3. Do **not** delete and recreate the pod — fix the root cause (the missing resource)
+  4. Save the fix description (one line: what was missing and what you created) to `/opt/cka/crashloop-fix.txt`
+
+  **Constraints:**
+  - Do not change the Pod spec
+  - Do not change the container image
+hint: |
+  The pod's logs will tell you exactly what is missing.
+  Use `kubectl logs api-server -n crash-demo` and `kubectl describe pod api-server -n crash-demo`.
+  The fix is to create the missing ConfigMap that the pod is trying to read from.
+  ```
+  kubectl create configmap app-config \
+    --from-literal=APP_ENV=production \
+    --from-literal=LOG_LEVEL=info \
+    -n crash-demo
+  ```

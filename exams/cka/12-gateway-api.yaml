@@ -1,0 +1,49 @@
+id: 12-gateway-api
+title: Gateway API — Create a Gateway and HTTPRoute
+weight: 7
+context: ""
+description: |
+  The Gateway API CRDs are already installed on this cluster. Two Services exist in namespace `gateway-demo`: `svc-a` (port 80) and `svc-b` (port 80).
+
+  Create the following Gateway API resources in namespace `gateway-demo`:
+
+  1. Create a **Gateway** named `main-gateway`:
+     - `gatewayClassName: example`
+     - One listener named `http` on port `80`, protocol `HTTP`
+
+  2. Create an **HTTPRoute** named `app-route` that:
+     - Attaches to `main-gateway` in the same namespace
+     - Routes requests with **host** `app.example.com` and **path prefix** `/service-a` to `svc-a` port 80
+     - Routes requests with **host** `app.example.com` and **path prefix** `/service-b` to `svc-b` port 80
+
+  3. Save the HTTPRoute YAML to `/opt/cka/app-route.yaml`
+hint: |
+  Gateway API uses `gateway.networking.k8s.io/v1` (v1 is stable since K8s 1.28).
+
+  ```yaml
+  apiVersion: gateway.networking.k8s.io/v1
+  kind: HTTPRoute
+  metadata:
+    name: app-route
+    namespace: gateway-demo
+  spec:
+    parentRefs:
+    - name: main-gateway
+    hostnames:
+    - "app.example.com"
+    rules:
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /service-a
+      backendRefs:
+      - name: svc-a
+        port: 80
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /service-b
+      backendRefs:
+      - name: svc-b
+        port: 80
+  ```

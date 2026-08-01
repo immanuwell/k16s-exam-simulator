@@ -1,0 +1,29 @@
+id: 01-fix-notready-node
+title: Fix a NotReady Worker Node
+weight: 7
+context: controlplane
+description: |
+  Worker node **node01** is currently in a `NotReady` state.
+
+  1. Investigate why `node01` is not Ready
+  2. Fix the underlying issue so that `node01` returns to `Ready` state
+  3. Confirm the fix:
+     ```
+     kubectl get node node01
+     ```
+  4. Save the node's status condition reason to `/opt/cka/node01-fix.txt`
+
+  **Hints for investigation:**
+  - SSH to node01: `ssh node01`
+  - Check the service that registers the node with the cluster
+hint: |
+  The kubelet service is responsible for keeping a node registered and healthy.
+  On node01:
+  ```
+  ssh node01
+  systemctl status kubelet
+  systemctl start kubelet
+  systemctl enable kubelet
+  ```
+  After the kubelet restarts, the node re-registers within ~30 seconds.
+  Back on controlplane: `kubectl get node node01 -o jsonpath='{.status.conditions[-1].reason}'`

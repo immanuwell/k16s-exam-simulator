@@ -1,0 +1,33 @@
+id: 14-coredns
+title: Add a CoreDNS Stub Zone for an Internal Domain
+weight: 5
+context: ""
+description: |
+  Configure CoreDNS to forward DNS queries for the domain `corp.internal` to an upstream DNS server at `192.168.100.1`.
+
+  1. Edit the `coredns` ConfigMap in namespace `kube-system`
+  2. Add a **stub zone** (forward block) for `corp.internal` that forwards to `192.168.100.1`
+  3. Restart the CoreDNS pods to apply the new configuration:
+     ```
+     kubectl rollout restart deployment/coredns -n kube-system
+     ```
+  4. Save the updated CoreDNS ConfigMap to `/opt/cka/coredns-updated.yaml`
+
+  **The existing Corefile content must not be broken** — append the stub zone alongside existing configuration.
+hint: |
+  Edit the ConfigMap:
+  ```
+  kubectl edit configmap coredns -n kube-system
+  ```
+  Add a new block at the bottom of the Corefile (inside the data.Corefile value):
+  ```
+  corp.internal:53 {
+      forward . 192.168.100.1
+  }
+  ```
+  Then save and restart CoreDNS:
+  ```
+  kubectl rollout restart deployment/coredns -n kube-system
+  kubectl rollout status deployment/coredns -n kube-system
+  kubectl get configmap coredns -n kube-system -o yaml > /opt/cka/coredns-updated.yaml
+  ```

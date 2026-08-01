@@ -1,0 +1,32 @@
+id: 11-networkpolicy
+title: NetworkPolicy — Restrict Pod-to-Pod Traffic
+weight: 6
+context: ""
+description: |
+  Namespace `netpol-app` contains two tiers of pods: `frontend` and `backend`.
+
+  Implement a **least-privilege** NetworkPolicy:
+
+  1. Create a NetworkPolicy named `backend-restrict` in namespace `netpol-app` that:
+     - Applies to pods with label `tier=backend`
+     - **Allows ingress** from pods with label `tier=frontend` in the **same namespace** on **TCP port 8080**
+     - **Denies all other ingress** to backend pods
+
+  2. Create a NetworkPolicy named `default-deny-ingress` in namespace `netpol-app` that:
+     - Applies to **all pods** in the namespace
+     - Denies all ingress (empty ingress spec)
+
+  3. Save the `backend-restrict` YAML to `/opt/cka/backend-restrict.yaml`
+hint: |
+  The `default-deny-ingress` policy uses an empty `ingress: []` and selects all pods with `podSelector: {}`.
+  The `backend-restrict` policy allows ingress only from `tier=frontend` pods:
+  ```yaml
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          tier: frontend
+    ports:
+    - port: 8080
+      protocol: TCP
+  ```

@@ -1,0 +1,22 @@
+id: 03-fix-pending-pod
+title: Fix a Pending Pod — Node Selector
+weight: 5
+context: ""
+description: |
+  A Deployment named `gpu-workload` in namespace `scheduling-demo` has all its pods stuck in `Pending`.
+
+  1. Investigate why the pods are not being scheduled
+  2. Fix the issue by **labelling the correct node** — do not modify the Deployment spec
+  3. Label **node02** with the label the pods require
+  4. Confirm pods move to `Running`:
+     ```
+     kubectl get pods -n scheduling-demo
+     ```
+  5. Save the label key=value you added to `/opt/cka/node-label.txt`
+hint: |
+  Use `kubectl describe pod -n scheduling-demo` to see the scheduling failure reason.
+  The pods need a node with a specific label. Add it with:
+  ```
+  kubectl label node node02 <key>=<value>
+  ```
+  Check what label is required from the pod's `nodeSelector` field.

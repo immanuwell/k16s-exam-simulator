@@ -1,0 +1,41 @@
+id: 10-static-pod
+title: Create a Static Pod on a Worker Node
+weight: 4
+context: controlplane
+description: |
+  Create a **static pod** that runs directly on **node01** (not scheduled by the API server).
+
+  1. SSH to node01 and create a static pod manifest at `/etc/kubernetes/manifests/static-busybox.yaml`
+
+  2. The pod must have:
+     - **Name:** `static-busybox`
+     - **Image:** `busybox:stable`
+     - **Command:** `sleep 3600`
+     - **Label:** `tier=static`
+
+  3. Verify the pod appears in the API server (it will be named `static-busybox-node01`):
+     ```
+     kubectl get pod static-busybox-node01 -n default
+     ```
+
+  4. Save the pod's full name (with node suffix) to `/opt/cka/static-pod-name.txt`
+hint: |
+  SSH to node01 and write the manifest to the kubelet's static pod directory:
+  ```
+  ssh node01
+  cat > /etc/kubernetes/manifests/static-busybox.yaml <<EOF
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: static-busybox
+    labels:
+      tier: static
+  spec:
+    containers:
+    - name: busybox
+      image: busybox:stable
+      command: ["sleep", "3600"]
+  EOF
+  ```
+  The kubelet on node01 will create the pod automatically.
+  It appears in the API as `static-busybox-node01`.

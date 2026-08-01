@@ -1,0 +1,27 @@
+id: 06-etcd-backup
+title: Back Up and Verify etcd
+weight: 6
+context: controlplane
+description: |
+  Create an etcd snapshot backup.
+
+  1. Use `etcdctl` to take a snapshot of the etcd datastore and save it to `/opt/cka/etcd-backup.db`
+
+  2. Verify the snapshot is valid and save the verification output to `/opt/cka/etcd-backup-status.txt`
+
+  **etcd endpoint and certificates are at the standard kubeadm paths:**
+  - Endpoint: `https://127.0.0.1:2379`
+  - CA cert: `/etc/kubernetes/pki/etcd/ca.crt`
+  - Client cert: `/etc/kubernetes/pki/etcd/server.crt`
+  - Client key: `/etc/kubernetes/pki/etcd/server.key`
+hint: |
+  ```bash
+  ETCDCTL_API=3 etcdctl snapshot save /opt/cka/etcd-backup.db \
+    --endpoints=https://127.0.0.1:2379 \
+    --cacert=/etc/kubernetes/pki/etcd/ca.crt \
+    --cert=/etc/kubernetes/pki/etcd/server.crt \
+    --key=/etc/kubernetes/pki/etcd/server.key
+
+  ETCDCTL_API=3 etcdctl snapshot status /opt/cka/etcd-backup.db \
+    --write-out=table > /opt/cka/etcd-backup-status.txt
+  ```

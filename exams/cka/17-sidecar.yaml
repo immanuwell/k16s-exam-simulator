@@ -1,0 +1,41 @@
+id: 17-sidecar
+title: Pod with Sidecar Container and Shared Volume
+weight: 5
+context: ""
+description: |
+  Create a pod that uses a **sidecar pattern**: a main application container writes logs to a shared volume, and a sidecar container reads and forwards them.
+
+  Create a Pod named `log-sidecar` in namespace `sidecar-demo` with:
+
+  **Main container (`app`):**
+  - Image: `busybox:stable`
+  - Command: `sh -c "while true; do date >> /logs/app.log; sleep 5; done"`
+  - Mount an `emptyDir` volume named `log-vol` at `/logs`
+
+  **Sidecar container (`log-shipper`):**
+  - Image: `busybox:stable`
+  - Command: `sh -c "tail -f /logs/app.log"`
+  - Mount the same `log-vol` volume at `/logs`
+
+  Verify logs from the sidecar:
+  ```
+  kubectl logs log-sidecar -c log-shipper -n sidecar-demo
+  ```
+
+  Save the pod YAML to `/opt/cka/log-sidecar.yaml`
+hint: |
+  Both containers share the same `emptyDir` volume. Define the volume once in `spec.volumes` and mount it in both containers:
+  ```yaml
+  volumes:
+  - name: log-vol
+    emptyDir: {}
+  containers:
+  - name: app
+    volumeMounts:
+    - name: log-vol
+      mountPath: /logs
+  - name: log-shipper
+    volumeMounts:
+    - name: log-vol
+      mountPath: /logs
+  ```

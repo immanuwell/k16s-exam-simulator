@@ -1,0 +1,42 @@
+id: 16-daemonset
+title: Create a DaemonSet on Labeled Nodes
+weight: 4
+context: ""
+description: |
+  Deploy a log-shipping agent as a **DaemonSet** that runs only on nodes with a specific label.
+
+  1. Label **both** `node01` and `node02` with `monitoring=enabled`
+
+  2. Create a **DaemonSet** named `log-agent` in namespace `monitoring`:
+     - Image: `busybox:stable`
+     - Command: `sh -c "while true; do echo log; sleep 10; done"`
+     - Container name: `agent`
+     - Use a **nodeSelector** so it only runs on nodes with `monitoring=enabled`
+     - Set `tolerations` to also run on the controlplane node if it has `monitoring=enabled`
+
+  3. Verify the DaemonSet runs on the labeled nodes:
+     ```
+     kubectl get pods -n monitoring -o wide
+     ```
+
+  4. Save the DaemonSet YAML to `/opt/cka/log-agent.yaml`
+hint: |
+  ```bash
+  kubectl label node node01 monitoring=enabled
+  kubectl label node node02 monitoring=enabled
+  ```
+  Create the DaemonSet with:
+  ```yaml
+  spec:
+    selector:
+      matchLabels:
+        app: log-agent
+    template:
+      spec:
+        nodeSelector:
+          monitoring: enabled
+        containers:
+        - name: agent
+          image: busybox:stable
+          command: ["sh", "-c", "while true; do echo log; sleep 10; done"]
+  ```

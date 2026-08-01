@@ -1,0 +1,24 @@
+id: 13-ingress
+title: Create a Path-Based Ingress
+weight: 5
+context: ""
+description: |
+  Two Services exist in namespace `ingress-demo`: `web-svc` (port 80) and `api-svc` (port 8080).
+
+  Create an **Ingress** named `app-ingress` in namespace `ingress-demo` that:
+  - Routes traffic from host `exam.local` with path `/web` → `web-svc` port 80
+  - Routes traffic from host `exam.local` with path `/api` → `api-svc` port 8080
+  - Uses `pathType: Prefix` for both rules
+
+  Save the Ingress YAML to `/opt/cka/app-ingress.yaml`
+hint: |
+  ```bash
+  kubectl create ingress app-ingress -n ingress-demo \
+    --rule="exam.local/web=web-svc:80" \
+    --rule="exam.local/api=api-svc:8080" \
+    --dry-run=client -o yaml > /opt/cka/app-ingress.yaml
+
+  kubectl apply -f /opt/cka/app-ingress.yaml
+  ```
+  The `kubectl create ingress --rule` syntax creates `pathType: Exact` by default.
+  Edit the YAML to change to `pathType: Prefix` before applying.

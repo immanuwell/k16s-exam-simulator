@@ -1,0 +1,23 @@
+id: 04-fix-broken-scheduler
+title: Fix the Broken kube-scheduler
+weight: 6
+context: controlplane
+description: |
+  The `kube-scheduler` on the controlplane is not running correctly — new pods cannot be scheduled.
+
+  1. Identify the problem in the scheduler's static pod manifest
+  2. Fix `/etc/kubernetes/manifests/kube-scheduler.yaml` on the **controlplane**
+  3. Wait for the scheduler to restart and confirm it is `Running`:
+     ```
+     kubectl get pod -n kube-system -l component=kube-scheduler
+     ```
+  4. Save the name of the invalid flag you removed to `/opt/cka/scheduler-fix.txt`
+
+  **Note:** The static pod restarts automatically after the manifest is corrected. It may take up to 60 seconds.
+hint: |
+  Inspect the manifest for any flags that are not valid kube-scheduler arguments:
+  ```
+  grep -n '\-\-' /etc/kubernetes/manifests/kube-scheduler.yaml
+  ```
+  Compare against the official kube-scheduler documentation or remove flags that look out of place.
+  After saving, watch: `kubectl get pod -n kube-system -w`

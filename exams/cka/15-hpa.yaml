@@ -1,0 +1,29 @@
+id: 15-hpa
+title: Configure HorizontalPodAutoscaler for a Deployment
+weight: 5
+context: ""
+description: |
+  A Deployment named `load-gen` exists in namespace `hpa-demo`.
+
+  1. Create a **HorizontalPodAutoscaler** named `load-gen-hpa` in namespace `hpa-demo` that:
+     - Targets the `load-gen` Deployment
+     - Minimum replicas: **2**
+     - Maximum replicas: **8**
+     - Scales when **CPU utilization exceeds 60%** (average utilization across all pods)
+
+  2. Verify the HPA was created:
+     ```
+     kubectl get hpa load-gen-hpa -n hpa-demo
+     ```
+
+  3. Save the HPA description to `/opt/cka/load-gen-hpa.txt`
+hint: |
+  ```bash
+  kubectl autoscale deployment load-gen \
+    --name=load-gen-hpa \
+    --min=2 --max=8 --cpu-percent=60 \
+    -n hpa-demo
+
+  kubectl describe hpa load-gen-hpa -n hpa-demo > /opt/cka/load-gen-hpa.txt
+  ```
+  The Deployment must have CPU `requests` set for the HPA to work. Check with `kubectl describe deployment load-gen -n hpa-demo`.

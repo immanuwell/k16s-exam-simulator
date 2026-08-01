@@ -1,0 +1,23 @@
+id: 07-node-drain
+title: Drain a Node for Maintenance
+weight: 4
+context: ""
+description: |
+  Prepare **node01** for maintenance (simulating a cluster upgrade procedure).
+
+  1. **Cordon** node01 so no new pods are scheduled to it
+  2. **Drain** node01, evicting all eligible pods:
+     - Ignore DaemonSet-managed pods
+     - Force-delete pods with no controller (`--delete-emulated-storage`)
+  3. Verify no non-DaemonSet pods remain on node01
+  4. **Uncordon** node01 after the "maintenance window"
+  5. Save the final node status line to `/opt/cka/node-drain.txt`
+hint: |
+  ```bash
+  kubectl cordon node01
+  kubectl drain node01 --ignore-daemonsets --delete-emulated-storage --force
+  # ... perform maintenance ...
+  kubectl uncordon node01
+  kubectl get node node01 --no-headers > /opt/cka/node-drain.txt
+  ```
+  After uncordon, the node status should be `Ready` (not `Ready,SchedulingDisabled`).

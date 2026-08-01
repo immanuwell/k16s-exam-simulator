@@ -1,0 +1,22 @@
+id: 09-cert-check
+title: Check Cluster Certificate Expiration
+weight: 4
+context: controlplane
+description: |
+  Kubernetes certificates need regular renewal. Audit the cluster certificate expiration dates.
+
+  1. Run the kubeadm certificate check and save the full output to `/opt/cka/cert-expiration.txt`
+
+  2. Find the certificate with the **shortest remaining validity** (excluding `ca` certificates which have 10-year lifetimes)
+
+  3. Save the name of that certificate to `/opt/cka/soonest-expiring-cert.txt`
+
+  4. Save the number of days until it expires to `/opt/cka/days-to-expiry.txt` (integer, rounded down)
+hint: |
+  ```bash
+  kubeadm certs check-expiration > /opt/cka/cert-expiration.txt 2>&1
+  cat /opt/cka/cert-expiration.txt
+  ```
+  The output table shows each certificate, its expiration date, and residual time.
+  The residual time column shows days remaining. Exclude entries with "ca" in the name.
+  Save only the integer number of days.
