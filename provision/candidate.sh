@@ -110,5 +110,8 @@ bind - split-window -v
 EOF
 chown candidate:candidate /home/candidate/.tmux.conf
 
+touch /home/candidate/.hushlogin
+chown candidate:candidate /home/candidate/.hushlogin
+
 mark_done "candidate"
 log_ok "Candidate environment configured (password: ${CANDIDATE_PASS})"
