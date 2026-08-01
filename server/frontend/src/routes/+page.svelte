@@ -200,9 +200,7 @@
 {:else if view === 'home'}
   <div class="h-screen flex flex-col items-center justify-center gap-8 px-4">
     <div class="text-center">
-      <div class="text-5xl font-bold tracking-tight text-white mb-1">
-        <span class="text-[#3b82f6]">CKX</span>
-      </div>
+      <img src="/logo.svg" alt="K16S" class="h-12 mx-auto mb-1" />
       <div class="text-slate-400 text-sm tracking-widest uppercase">Kubernetes Exam Practice</div>
     </div>
 
@@ -256,7 +254,7 @@
 
     <!-- Header -->
     <div class="flex-none bg-[#1e2230] border-b border-[#2a2f42] px-4 py-2 flex items-center gap-3">
-      <span class="text-[#3b82f6] font-bold text-sm shrink-0">CKX</span>
+      <img src="/logo.svg" alt="K16S" class="h-5 shrink-0" />
       <span class="text-slate-600 text-sm shrink-0 hidden sm:block">{session?.profile?.toUpperCase()}</span>
 
       <!-- Question nav pills -->
