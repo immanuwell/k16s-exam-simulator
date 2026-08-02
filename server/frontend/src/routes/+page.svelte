@@ -70,7 +70,7 @@
     if (s === 'passed')   return 'bg-green-700 text-green-100 ring-green-600';
     if (s === 'failed')   return 'bg-red-800   text-red-100   ring-red-700';
     if (s === 'attempted') return 'bg-amber-700 text-amber-100 ring-amber-600';
-    return 'bg-[#2a2f42] text-slate-400 ring-[#3a4060]';
+    return 'bg-[#333748] text-slate-400 ring-[#454b5e]';
   }
 
   function md(text) {
@@ -234,12 +234,12 @@
       </div>
     {/if}
 
-    <div class="bg-[#161922] border border-[#2a2f42] rounded-lg p-6 w-full max-w-sm space-y-5">
+    <div class="bg-[#22252e] border border-[#3a3f4e] rounded-lg p-6 w-full max-w-sm space-y-5">
       <div>
         <div class="block text-xs text-slate-500 uppercase tracking-wider mb-1.5">Exam Profile</div>
         <div class="flex gap-2">
           {#if ckaProfiles.length}
-            <div class="flex-1 border border-[#2a2f42] rounded-md px-2 pt-1.5 pb-2 space-y-1.5">
+            <div class="flex-1 border border-[#3a3f4e] rounded-md px-2 pt-1.5 pb-2 space-y-1.5">
               <div class="text-[10px] text-slate-600 uppercase tracking-widest text-center">CKA</div>
               <div class="flex gap-1.5">
                 {#each ckaProfiles.sort() as p}
@@ -247,14 +247,14 @@
                     onclick={() => profile = p}
                     class="flex-1 py-1.5 rounded text-sm font-medium transition-colors {profile === p
                       ? 'bg-[#3b82f6] text-white'
-                      : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+                      : 'bg-[#333748] text-slate-400 hover:text-slate-200'}"
                   >{labelFor(p, ckaProfiles)}</button>
                 {/each}
               </div>
             </div>
           {/if}
           {#if cksProfiles.length}
-            <div class="flex-1 border border-[#2a2f42] rounded-md px-2 pt-1.5 pb-2 space-y-1.5">
+            <div class="flex-1 border border-[#3a3f4e] rounded-md px-2 pt-1.5 pb-2 space-y-1.5">
               <div class="text-[10px] text-slate-600 uppercase tracking-widest text-center">CKS</div>
               <div class="flex gap-1.5">
                 {#each cksProfiles.sort() as p}
@@ -262,7 +262,7 @@
                     onclick={() => profile = p}
                     class="flex-1 py-1.5 rounded text-sm font-medium transition-colors {profile === p
                       ? 'bg-[#3b82f6] text-white'
-                      : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+                      : 'bg-[#333748] text-slate-400 hover:text-slate-200'}"
                   >{labelFor(p, cksProfiles)}</button>
                 {/each}
               </div>
@@ -279,7 +279,7 @@
               onclick={() => duration = opt.val}
               class="flex-1 py-2 rounded text-sm font-medium transition-colors {duration === opt.val
                 ? 'bg-[#3b82f6] text-white'
-                : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+                : 'bg-[#333748] text-slate-400 hover:text-slate-200'}"
             >{opt.label}</button>
           {/each}
         </div>
@@ -303,7 +303,7 @@
   <div class="h-screen flex flex-col" style="height: 100dvh">
 
     <!-- Header -->
-    <div class="flex-none bg-[#1e2230] border-b border-[#2a2f42] px-4 py-2 flex items-center gap-3">
+    <div class="flex-none bg-[#282c37] border-b border-[#3a3f4e] px-4 py-2 flex items-center gap-3">
       <img src="/logo.svg" alt="K16S" class="h-5 shrink-0" />
       <span class="text-slate-600 text-sm shrink-0 hidden sm:block">{session?.profile ? examLabel(session.profile) : ''}</span>
 
@@ -332,7 +332,7 @@
     <div class="flex-1 flex overflow-hidden">
 
       <!-- Question Panel -->
-      <div class="w-[30%] min-w-64 flex flex-col border-r border-[#2a2f42] overflow-hidden">
+      <div class="w-[30%] min-w-64 flex flex-col border-r border-[#3a3f4e] overflow-hidden">
         {#if currentQuestion}
           <div class="flex-1 overflow-y-auto p-4 space-y-4">
             <div class="flex items-start justify-between gap-2">
@@ -340,9 +340,9 @@
                 <div class="text-xs text-slate-500 uppercase tracking-wide mb-0.5">
                   Task {currentIdx + 1} of {questions.length}
                 </div>
-                <h2 class="text-base font-semibold text-slate-100">{currentQuestion.title}</h2>
+                <h2 class="text-base font-semibold text-slate-200">{currentQuestion.title}</h2>
               </div>
-              <span class="shrink-0 text-xs bg-[#2a2f42] text-slate-400 px-2 py-1 rounded font-mono">
+              <span class="shrink-0 text-xs bg-[#333748] text-slate-400 px-2 py-1 rounded font-mono">
                 {currentQuestion.weight}pt{currentQuestion.weight !== 1 ? 's' : ''}
               </span>
             </div>
@@ -353,7 +353,7 @@
               </div>
             {/if}
 
-            <div class="text-sm text-slate-300 leading-relaxed space-y-1 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_p]:my-1 [&_strong]:text-slate-100">
+            <div class="text-sm text-slate-300 leading-relaxed space-y-1 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_p]:my-1 [&_strong]:text-slate-200">
               {@html md(currentQuestion.description)}
             </div>
 
@@ -362,7 +362,7 @@
                 <summary class="cursor-pointer text-xs text-[#3b82f6] hover:text-blue-300 select-none">
                   Show hint
                 </summary>
-                <div class="mt-2 text-xs text-slate-400 bg-[#161922] border border-[#2a2f42] rounded p-3 leading-relaxed">
+                <div class="mt-2 text-xs text-slate-400 bg-[#22252e] border border-[#3a3f4e] rounded p-3 leading-relaxed">
                   {currentQuestion.hint}
                 </div>
               </details>
@@ -387,11 +387,11 @@
           </div>
 
           <!-- Action bar -->
-          <div class="flex-none border-t border-[#2a2f42] p-3 flex gap-2">
+          <div class="flex-none border-t border-[#3a3f4e] p-3 flex gap-2">
             <button
               onclick={setupEnv}
               disabled={setting_up}
-              class="flex-1 py-1.5 text-xs rounded border border-[#2a2f42] text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors disabled:opacity-50"
+              class="flex-1 py-1.5 text-xs rounded border border-[#3a3f4e] text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors disabled:opacity-50"
             >{setting_up ? 'Setting up…' : 'Setup Env'}</button>
             <button
               onclick={checkAnswer}
@@ -404,18 +404,18 @@
 
       <!-- Terminal / Desktop -->
       <div class="flex-1 flex flex-col overflow-hidden">
-        <div class="flex-none flex gap-1 bg-[#1e2230] border-b border-[#2a2f42] px-2 py-1.5">
+        <div class="flex-none flex gap-1 bg-[#282c37] border-b border-[#3a3f4e] px-2 py-1.5">
           <button
             onclick={() => selectPanel('terminal')}
             class="px-3 py-1 rounded text-xs font-medium transition-colors {rightPanel === 'terminal'
               ? 'bg-[#3b82f6] text-white'
-              : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+              : 'bg-[#333748] text-slate-400 hover:text-slate-200'}"
           >Terminal</button>
           <button
             onclick={() => selectPanel('desktop')}
             class="px-3 py-1 rounded text-xs font-medium transition-colors {rightPanel === 'desktop'
               ? 'bg-[#3b82f6] text-white'
-              : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+              : 'bg-[#333748] text-slate-400 hover:text-slate-200'}"
           >Desktop</button>
         </div>
 
@@ -471,11 +471,11 @@
     <div class="w-full max-w-lg space-y-2">
       {#each questions as q, i}
         {@const p = progress[q.id]}
-        <div class="flex items-start gap-3 bg-[#161922] border border-[#2a2f42] rounded p-3">
+        <div class="flex items-start gap-3 bg-[#22252e] border border-[#3a3f4e] rounded p-3">
           <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-mono shrink-0 mt-0.5
             {p?.status === 'passed' ? 'bg-green-700 text-green-100' :
              p?.status === 'failed' ? 'bg-red-800 text-red-100' :
-             'bg-[#2a2f42] text-slate-500'}"
+             'bg-[#333748] text-slate-500'}"
           >{i + 1}</div>
           <div class="flex-1 min-w-0">
             <div class="text-sm text-slate-300">{q.title}</div>
