@@ -332,7 +332,7 @@
     <div class="flex-1 flex overflow-hidden">
 
       <!-- Question Panel -->
-      <div class="w-2/5 min-w-64 flex flex-col border-r border-[#2a2f42] overflow-hidden">
+      <div class="w-[30%] min-w-64 flex flex-col border-r border-[#2a2f42] overflow-hidden">
         {#if currentQuestion}
           <div class="flex-1 overflow-y-auto p-4 space-y-4">
             <div class="flex items-start justify-between gap-2">
