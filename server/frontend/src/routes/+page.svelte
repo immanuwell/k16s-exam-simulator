@@ -18,6 +18,13 @@
 
   let timerInterval = null;
   let terminalIframe = $state(null);
+  let rightPanel = $state('terminal'); // terminal | desktop
+  let desktopLoaded = $state(false);
+
+  function selectPanel(p) {
+    rightPanel = p;
+    if (p === 'desktop') desktopLoaded = true;
+  }
 
   // ── Derived ────────────────────────────────────────────────────────────────
   let currentQuestion = $derived(questions[currentIdx] ?? null);
@@ -284,7 +291,11 @@
       >Start Exam</button>
     </div>
 
-    <p class="text-slate-600 text-xs">Open the terminal at <a href="/terminal/" target="_blank" class="text-slate-500 hover:text-slate-300 underline">/terminal/</a> before starting.</p>
+    <p class="text-slate-600 text-xs">
+      Open the <a href="/terminal/" target="_blank" class="text-slate-500 hover:text-slate-300 underline">terminal</a>
+      or the <a href="/desktop/vnc_lite.html?autoconnect=true&resize=remote&reconnect=true&path=desktop/websockify" target="_blank" class="text-slate-500 hover:text-slate-300 underline">desktop</a>
+      before starting.
+    </p>
   </div>
 
 <!-- ── Exam ────────────────────────────────────────────────────────────── -->
@@ -391,27 +402,54 @@
         {/if}
       </div>
 
-      <!-- Terminal iframe -->
-      <div class="flex-1 relative">
-        <iframe
-          bind:this={terminalIframe}
-          src="/terminal/"
-          title="Terminal"
-          class="absolute inset-0 w-full h-full border-0"
-          onload={() => {
-            const win = terminalIframe?.contentWindow;
-            if (!win) return;
-            win.focus();
-            win.document.addEventListener('keydown', (e) => {
-              if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'C') {
-                e.preventDefault();
-                e.stopPropagation();
-                const text = win.term?.getSelection?.();
-                if (text) navigator.clipboard.writeText(text).catch(() => {});
-              }
-            }, true);
-          }}
-        ></iframe>
+      <!-- Terminal / Desktop -->
+      <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-none flex gap-1 bg-[#1e2230] border-b border-[#2a2f42] px-2 py-1.5">
+          <button
+            onclick={() => selectPanel('terminal')}
+            class="px-3 py-1 rounded text-xs font-medium transition-colors {rightPanel === 'terminal'
+              ? 'bg-[#3b82f6] text-white'
+              : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+          >Terminal</button>
+          <button
+            onclick={() => selectPanel('desktop')}
+            class="px-3 py-1 rounded text-xs font-medium transition-colors {rightPanel === 'desktop'
+              ? 'bg-[#3b82f6] text-white'
+              : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+          >Desktop</button>
+        </div>
+
+        <div class="flex-1 relative">
+          <iframe
+            bind:this={terminalIframe}
+            src="/terminal/"
+            title="Terminal"
+            class="absolute inset-0 w-full h-full border-0"
+            style={rightPanel === 'terminal' ? '' : 'display:none'}
+            onload={() => {
+              const win = terminalIframe?.contentWindow;
+              if (!win) return;
+              win.focus();
+              win.document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'C') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const text = win.term?.getSelection?.();
+                  if (text) navigator.clipboard.writeText(text).catch(() => {});
+                }
+              }, true);
+            }}
+          ></iframe>
+
+          {#if desktopLoaded}
+            <iframe
+              src="/desktop/vnc_lite.html?autoconnect=true&resize=remote&reconnect=true&path=desktop/websockify"
+              title="Desktop"
+              class="absolute inset-0 w-full h-full border-0"
+              style={rightPanel === 'desktop' ? '' : 'display:none'}
+            ></iframe>
+          {/if}
+        </div>
       </div>
 
     </div>

@@ -59,7 +59,7 @@ Topics across the three mocks: NetworkPolicy (ingress, egress, ipBlock, namespac
 ## Requirements
 
 - A VPS or VM running **Debian 13** (trixie) or **Ubuntu 22.04+**
-- Minimum: **4 vCPUs, 6 GB RAM, 30 GB disk**
+- Minimum: **4 vCPUs, 8 GB RAM, 30 GB disk**
 - Root SSH access
 - Open port **80** (the exam UI is served over plain HTTP on the LAN, not intended for public internet exposure)
 

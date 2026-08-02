@@ -57,6 +57,7 @@ run_step incus        # create worker containers (image already cached)
 run_step node-join
 run_step candidate
 run_step ttyd
+run_step desktop
 run_step nginx
 run_step k16s-server
 
@@ -76,6 +77,7 @@ echo -e "${GRN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "  Exam UI:      ${CYN}http://${NODE_IP}/${RST}"
 echo -e "  Terminal:     ${CYN}http://${NODE_IP}/terminal/${RST}"
+echo -e "  Desktop:      ${CYN}http://${NODE_IP}/desktop/vnc_lite.html?autoconnect=true&resize=remote&path=desktop/websockify${RST}"
 echo ""
 echo -e "  SSH access:   ${CYN}ssh candidate@${NODE_IP}${RST}"
 echo -e "  Password:     ${YEL}${PASS}${RST}"

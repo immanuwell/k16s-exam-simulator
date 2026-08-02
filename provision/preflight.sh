@@ -27,11 +27,11 @@ esac
 log_ok "Running as root"
 
 CPUS=$(nproc)
-[[ "${CPUS}" -ge 2 ]] || die "Need at least 2 CPUs, got ${CPUS}"
+[[ "${CPUS}" -ge 4 ]] || die "Need at least 4 CPUs, got ${CPUS} (the noVNC desktop's screen encoding is CPU-bound; 2 was enough before it existed)"
 log_ok "CPUs: ${CPUS}"
 
 MEM_MB=$(awk '/MemTotal/ { printf "%d", $2/1024 }' /proc/meminfo)
-[[ "${MEM_MB}" -ge 3800 ]] || die "Need at least 4GB RAM, got ${MEM_MB}MB"
+[[ "${MEM_MB}" -ge 7800 ]] || die "Need at least 8GB RAM, got ${MEM_MB}MB (Chromium in the desktop session alone can use 500MB-1GB)"
 log_ok "RAM: ${MEM_MB}MB"
 
 DISK_FREE_MB=$(df / | awk 'NR==2 { printf "%d", $4/1024 }')
