@@ -6,12 +6,12 @@
   * { box-sizing: border-box; }
 
   :root {
-    --bg:        #1a1d24;
-    --surface:   #22252e;
-    --header:    #282c37;
-    --border:    #3a3f4e;
-    --text:      #d9dee6;
-    --muted:     #9aa3b5;
+    --bg:        #33394a;
+    --surface:   #3b4256;
+    --header:    #454c63;
+    --border:    #5a6280;
+    --text:      #d7dbe4;
+    --muted:     #a3aac0;
     --accent:    #3b82f6;
     --passed:    #22c55e;
     --failed:    #ef4444;
@@ -33,7 +33,7 @@
   }
 
   pre {
-    background: #15171d;
+    background: #262a35;
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 0.75rem 1rem;
