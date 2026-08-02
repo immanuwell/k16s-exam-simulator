@@ -2,6 +2,8 @@
 
 ![](media/screenshot-1.png)
 
+![](media/screenshot-2.png)
+
 # K16S - Kubernetes Exam Simulator
 
 A self-hosted CKA and CKS exam simulator that runs a **real kubeadm cluster** on any Linux VPS.
