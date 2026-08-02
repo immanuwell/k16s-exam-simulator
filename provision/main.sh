@@ -77,7 +77,7 @@ echo -e "${GRN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "  Exam UI:      ${CYN}http://${NODE_IP}/${RST}"
 echo -e "  Terminal:     ${CYN}http://${NODE_IP}/terminal/${RST}"
-echo -e "  Desktop:      ${CYN}http://${NODE_IP}/desktop/vnc_lite.html?autoconnect=true&resize=remote&path=desktop/websockify${RST}"
+echo -e "  Desktop:      ${CYN}http://${NODE_IP}/desktop.html${RST}"
 echo ""
 echo -e "  SSH access:   ${CYN}ssh candidate@${NODE_IP}${RST}"
 echo -e "  Password:     ${YEL}${PASS}${RST}"
