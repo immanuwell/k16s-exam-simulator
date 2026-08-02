@@ -293,7 +293,7 @@
 
     <p class="text-slate-600 text-xs">
       Open the <a href="/terminal/" target="_blank" class="text-slate-500 hover:text-slate-300 underline">terminal</a>
-      or the <a href="/desktop/vnc_lite.html?autoconnect=true&resize=remote&reconnect=true&path=desktop/websockify" target="_blank" class="text-slate-500 hover:text-slate-300 underline">desktop</a>
+      or the <a href="/desktop/vnc_lite.html?autoconnect=true&scale=true&reconnect=true&path=desktop/websockify" target="_blank" class="text-slate-500 hover:text-slate-300 underline">desktop</a>
       before starting.
     </p>
   </div>
@@ -443,7 +443,7 @@
 
           {#if desktopLoaded}
             <iframe
-              src="/desktop/vnc_lite.html?autoconnect=true&resize=remote&reconnect=true&path=desktop/websockify"
+              src="/desktop/vnc_lite.html?autoconnect=true&scale=true&reconnect=true&path=desktop/websockify"
               title="Desktop"
               class="absolute inset-0 w-full h-full border-0"
               style={rightPanel === 'desktop' ? '' : 'display:none'}
