@@ -74,6 +74,7 @@ for i in $(seq 1 "${WORKER_COUNT}"); do
   incus config set "${NAME}" \
     security.privileged=true \
     security.nesting=true \
+    boot.autostart=true \
     linux.kernel_modules="overlay,br_netfilter,ip_tables,ip6_tables,nf_conntrack"
 
   incus config set "${NAME}" raw.lxc "$(cat <<'RAWLXC'
