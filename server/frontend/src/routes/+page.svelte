@@ -18,9 +18,12 @@
 
   let timerInterval = null;
   let terminalIframe = $state(null);
+  let rightPanel = $state('terminal'); // terminal | desktop
+  let desktopLoaded = $state(false);
 
-  function openDesktop() {
-    window.open('/desktop.html', '_blank');
+  function selectPanel(p) {
+    rightPanel = p;
+    if (p === 'desktop') desktopLoaded = true;
   }
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -290,7 +293,7 @@
 
     <p class="text-slate-600 text-xs">
       Open the <a href="/terminal/" target="_blank" class="text-slate-500 hover:text-slate-300 underline">terminal</a>
-      or the <a href="/desktop.html" target="_blank" class="text-slate-500 hover:text-slate-300 underline">desktop</a>
+      or the <a href="/desktop/vnc_lite.html?autoconnect=true&resize=remote&reconnect=true&path=desktop/websockify" target="_blank" class="text-slate-500 hover:text-slate-300 underline">desktop</a>
       before starting.
     </p>
   </div>
@@ -399,14 +402,21 @@
         {/if}
       </div>
 
-      <!-- Terminal -->
+      <!-- Terminal / Desktop -->
       <div class="flex-1 flex flex-col overflow-hidden">
-        <div class="flex-none flex items-center justify-between gap-1 bg-[#1e2230] border-b border-[#2a2f42] px-2 py-1.5">
-          <span class="px-3 py-1 rounded text-xs font-medium bg-[#3b82f6] text-white">Terminal</span>
+        <div class="flex-none flex gap-1 bg-[#1e2230] border-b border-[#2a2f42] px-2 py-1.5">
           <button
-            onclick={openDesktop}
-            class="px-3 py-1 rounded text-xs font-medium bg-[#2a2f42] text-slate-400 hover:text-slate-200 transition-colors"
-          >Desktop ↗</button>
+            onclick={() => selectPanel('terminal')}
+            class="px-3 py-1 rounded text-xs font-medium transition-colors {rightPanel === 'terminal'
+              ? 'bg-[#3b82f6] text-white'
+              : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+          >Terminal</button>
+          <button
+            onclick={() => selectPanel('desktop')}
+            class="px-3 py-1 rounded text-xs font-medium transition-colors {rightPanel === 'desktop'
+              ? 'bg-[#3b82f6] text-white'
+              : 'bg-[#2a2f42] text-slate-400 hover:text-slate-200'}"
+          >Desktop</button>
         </div>
 
         <div class="flex-1 relative">
@@ -415,6 +425,7 @@
             src="/terminal/"
             title="Terminal"
             class="absolute inset-0 w-full h-full border-0"
+            style={rightPanel === 'terminal' ? '' : 'display:none'}
             onload={() => {
               const win = terminalIframe?.contentWindow;
               if (!win) return;
@@ -429,6 +440,15 @@
               }, true);
             }}
           ></iframe>
+
+          {#if desktopLoaded}
+            <iframe
+              src="/desktop/vnc_lite.html?autoconnect=true&resize=remote&reconnect=true&path=desktop/websockify"
+              title="Desktop"
+              class="absolute inset-0 w-full h-full border-0"
+              style={rightPanel === 'desktop' ? '' : 'display:none'}
+            ></iframe>
+          {/if}
         </div>
       </div>
 
