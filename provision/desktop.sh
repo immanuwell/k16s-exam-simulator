@@ -6,7 +6,10 @@ log_step "desktop (noVNC web desktop)"
 
 already_done "desktop" && { log_skip "desktop"; exit 0; }
 
-apt_install tigervnc-standalone-server tigervnc-common openbox tint2 xterm novnc websockify x11-xserver-utils
+# sakura, not xterm, is the candidate-facing terminal — a VTE-based terminal
+# with antialiased fonts and a real preferences UI, still far lighter than
+# xfce4-terminal (no libxfce4ui/dbus deps, ~270KB installed vs ~2.2MB).
+apt_install tigervnc-standalone-server tigervnc-common openbox tint2 sakura novnc websockify x11-xserver-utils
 
 source /etc/os-release
 case "${ID}" in
@@ -49,13 +52,31 @@ log_ok "Browser: ${BROWSER_BIN}"
 
 install -d -o candidate -g candidate -m 700 /home/candidate/.config/openbox
 install -d -o candidate -g candidate -m 700 /home/candidate/.config/tint2
+install -d -o candidate -g candidate -m 700 /home/candidate/.config/sakura
+
+# Key names verified against the installed binary (strings /usr/bin/sakura) —
+# sakura's man page explicitly says its config option list is incomplete, and
+# GKeyFile parsers (what sakura uses) silently ignore unknown keys rather
+# than erroring, so this was cross-checked against real running output
+# instead of trusted blind.
+cat > /home/candidate/.config/sakura/sakura.conf <<'EOF'
+[sakura]
+last_colorset=1
+colorset1_fore=#D8DEE9
+colorset1_back=#0D0F16
+colorset1_curs=#3B82F6
+font=DejaVu Sans Mono 12
+scroll_lines=10000
+icon_file=/usr/share/pixmaps/terminal-tango.svg
+EOF
+chown candidate:candidate /home/candidate/.config/sakura/sakura.conf
 
 cat > /usr/share/applications/k16s-terminal.desktop <<EOF
 [Desktop Entry]
 Type=Application
 Name=Terminal
-Exec=xterm -fa Monospace -fs 12 -bg "#0d0f16" -fg "#d8dee9"
-Icon=/usr/share/pixmaps/xterm-color_48x48.xpm
+Exec=sakura
+Icon=/usr/share/pixmaps/terminal-tango.svg
 Categories=System;
 EOF
 
@@ -165,7 +186,7 @@ chown -R candidate:candidate /home/candidate/.config/tint2
 cat > /home/candidate/.config/openbox/autostart <<'EOF'
 xsetroot -solid "#161922" &
 tint2 &
-xterm -fa Monospace -fs 12 -bg "#0d0f16" -fg "#d8dee9" &
+sakura &
 EOF
 chown candidate:candidate /home/candidate/.config/openbox/autostart
 chmod +x /home/candidate/.config/openbox/autostart
@@ -175,7 +196,7 @@ cat > /home/candidate/.config/openbox/menu.xml <<EOF
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="K16S">
     <item label="Terminal">
-      <action name="Execute"><command>xterm -fa Monospace -fs 12 -bg "#0d0f16" -fg "#d8dee9"</command></action>
+      <action name="Execute"><command>sakura</command></action>
     </item>
     <item label="Browser">
       <action name="Execute"><command>${BROWSER_BIN}</command></action>
@@ -200,7 +221,7 @@ cat > /home/candidate/.config/openbox/rc.xml <<'EOF'
   </desktops>
   <keyboard>
     <keybind key="W-Return">
-      <action name="Execute"><command>xterm -fa Monospace -fs 12 -bg "#0d0f16" -fg "#d8dee9"</command></action>
+      <action name="Execute"><command>sakura</command></action>
     </keybind>
     <keybind key="W-b">
       <action name="Execute"><command>__BROWSER_BIN__</command></action>
