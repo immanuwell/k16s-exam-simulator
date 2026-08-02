@@ -6,7 +6,7 @@ log_step "desktop (noVNC web desktop)"
 
 already_done "desktop" && { log_skip "desktop"; exit 0; }
 
-apt_install tigervnc-standalone-server tigervnc-common openbox xterm novnc websockify x11-xserver-utils
+apt_install tigervnc-standalone-server tigervnc-common openbox tint2 xterm novnc websockify x11-xserver-utils
 
 source /etc/os-release
 case "${ID}" in
@@ -19,6 +19,7 @@ case "${ID}" in
     # firefox-esr is a real .deb on Debian and launches cleanly.
     apt_install firefox-esr
     BROWSER_BIN="/usr/bin/firefox-esr"
+    BROWSER_ICON="/usr/share/icons/hicolor/48x48/apps/firefox-esr.png"
     ;;
   ubuntu)
     # Ubuntu ships neither chromium nor firefox-esr as real apt packages
@@ -29,6 +30,10 @@ case "${ID}" in
       snap install firefox
     fi
     BROWSER_BIN="/snap/bin/firefox"
+    # Best-effort: relies on the "firefox" icon name resolving via the snap's
+    # desktop-icon integration (/var/lib/snapd/desktop/icons) — not verified
+    # on Ubuntu the way the Debian path above was.
+    BROWSER_ICON="firefox"
     ;;
   *)
     die "Unsupported OS '${ID}' for desktop step"
@@ -37,14 +42,129 @@ esac
 log_ok "Browser: ${BROWSER_BIN}"
 
 # ── Candidate desktop config ───────────────────────────────────────────────
-# No panel/taskbar is started — the real exam UI shows no window-manager
-# chrome at all, just the split-pane webpage. Openbox's right-click menu is
-# the only way in, matching "nothing visible until you launch something".
+# tint2 gives a launcher (Terminal/Browser icons) and a taskbar (click to
+# switch windows) — a real WM chrome the exam itself never shows, but without
+# it there's no discoverable way to open a second window or switch back to
+# one that's covered. Still a small fraction of xfce's panel+compositor cost.
 
 install -d -o candidate -g candidate -m 700 /home/candidate/.config/openbox
+install -d -o candidate -g candidate -m 700 /home/candidate/.config/tint2
+
+cat > /usr/share/applications/k16s-terminal.desktop <<EOF
+[Desktop Entry]
+Type=Application
+Name=Terminal
+Exec=xterm -fa Monospace -fs 12 -bg "#0d0f16" -fg "#d8dee9"
+Icon=/usr/share/pixmaps/xterm-color_48x48.xpm
+Categories=System;
+EOF
+
+cat > /usr/share/applications/k16s-browser.desktop <<EOF
+[Desktop Entry]
+Type=Application
+Name=Browser
+Exec=${BROWSER_BIN}
+Icon=${BROWSER_ICON}
+Categories=Network;
+EOF
+
+cat > /home/candidate/.config/tint2/tint2rc <<'EOF'
+#-------------------------------------
+# Backgrounds
+# Background 1: Panel
+rounded = 0
+border_width = 0
+border_sides = TBLR
+background_color = #161922 100
+border_color = #2a2f42 100
+background_color_hover = #161922 100
+border_color_hover = #2a2f42 100
+background_color_pressed = #161922 100
+border_color_pressed = #2a2f42 100
+
+# Background 2: Default task
+rounded = 3
+border_width = 0
+border_sides = TBLR
+background_color = #2a2f42 100
+border_color = #2a2f42 100
+background_color_hover = #353b52 100
+border_color_hover = #353b52 100
+background_color_pressed = #353b52 100
+border_color_pressed = #353b52 100
+
+# Background 3: Active task
+rounded = 3
+border_width = 0
+border_sides = TBLR
+background_color = #3b82f6 100
+border_color = #3b82f6 100
+background_color_hover = #3b82f6 100
+border_color_hover = #3b82f6 100
+background_color_pressed = #2563eb 100
+border_color_pressed = #2563eb 100
+
+#-------------------------------------
+# Panel
+panel_items = LT
+panel_size = 100% 34
+panel_margin = 0 0
+panel_padding = 6 3 6
+panel_background_id = 1
+panel_layer = top
+panel_position = bottom center horizontal
+panel_dock = 0
+strut_policy = follow_size
+panel_monitor = all
+wm_menu = 0
+
+#-------------------------------------
+# Launcher
+launcher_padding = 0 0 6
+launcher_background_id = 0
+launcher_icon_background_id = 0
+launcher_icon_size = 22
+launcher_icon_theme_override = 0
+launcher_tooltip = 1
+launcher_item_app = /usr/share/applications/k16s-terminal.desktop
+launcher_item_app = /usr/share/applications/k16s-browser.desktop
+
+#-------------------------------------
+# Taskbar
+taskbar_mode = single_desktop
+taskbar_padding = 4 0
+taskbar_background_id = 0
+taskbar_active_background_id = 0
+taskbar_name = 0
+taskbar_hide_inactive_tasks = 0
+taskbar_distribute_size = 0
+taskbar_sort_order = none
+task_align = left
+
+#-------------------------------------
+# Task
+task_icon = 1
+task_text = 1
+task_centered = 1
+task_maximum_size = 200 30
+task_padding = 6 3
+task_font = sans 9
+task_tooltip = 1
+task_background_id = 2
+task_active_background_id = 3
+task_font_color = #d8dee9 100
+task_active_font_color = #ffffff 100
+mouse_left = toggle_iconify
+mouse_middle = none
+mouse_right = close
+mouse_scroll_up = none
+mouse_scroll_down = none
+EOF
+chown -R candidate:candidate /home/candidate/.config/tint2
 
 cat > /home/candidate/.config/openbox/autostart <<'EOF'
 xsetroot -solid "#161922" &
+tint2 &
 xterm -fa Monospace -fs 12 -bg "#0d0f16" -fg "#d8dee9" &
 EOF
 chown candidate:candidate /home/candidate/.config/openbox/autostart
