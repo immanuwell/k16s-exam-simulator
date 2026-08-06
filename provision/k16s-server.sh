@@ -57,11 +57,18 @@ elif [[ -d "${REPO_ROOT}/server" ]]; then
     log_ok "Go ${GO_VERSION} installed"
   fi
 
-  if ! cmd_exists node; then
+  # Test for npm as well as node, and reject a too-old node. On Ubuntu the
+  # desktop step pulls in novnc, which depends on the distro `nodejs` package
+  # (18.x, and no npm — Ubuntu ships npm separately). A node-only test then
+  # skips this block and the frontend build dies on "npm: command not found".
+  # The frontend needs Vite 8, which requires node >= 20.19.
+  NODE_MAJOR=0
+  cmd_exists node && NODE_MAJOR=$(node --version | sed 's/^v\([0-9]*\).*/\1/')
+  if ! cmd_exists node || ! cmd_exists npm || [[ "${NODE_MAJOR}" -lt 20 ]]; then
     log_info "Installing Node.js..."
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
     apt_install nodejs
-    log_ok "Node.js $(node --version) installed"
+    log_ok "Node.js $(node --version) / npm $(npm --version) installed"
   fi
 
   pushd "${REPO_ROOT}/server" > /dev/null
