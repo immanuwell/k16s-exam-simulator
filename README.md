@@ -6,7 +6,7 @@
 
 # K16S - Kubernetes Exam Simulator
 
-A self-hosted CKA and CKS exam simulator that runs a **real kubeadm cluster** on any Linux VPS.
+A self-hosted CKA and CKS exam simulator that runs a **real kubeadm cluster** on any Linux VPS — or entirely on your own laptop, no VPS required.
 One command to provision. Browser-based terminal. Timed mock exams with per-question setup and automated validation.
 
 ---
@@ -62,14 +62,48 @@ Topics across the three mocks: NetworkPolicy (ingress, egress, ipBlock, namespac
 
 ## Requirements
 
+**VPS mode:**
 - A VPS or VM running **Debian 13** (trixie) or **Ubuntu 22.04+**
 - Minimum: **4 vCPUs, 8 GB RAM, 30 GB disk**
 - Root SSH access
 - Open port **80** (the exam UI is served over plain HTTP on the LAN, not intended for public internet exposure)
 
+**Laptop mode:**
+- macOS or Linux, **16 GB+ RAM** recommended (the VM takes 8 GB, leave headroom for everything else you run)
+- [Lima](https://lima-vm.io) (`brew install lima` on macOS, `apt install lima` or a release binary on Linux)
+- Windows isn't supported natively yet — WSL2 users can follow the Linux path, but it's unverified
+
 ---
 
 ## Quick Start
+
+### Option A — on your laptop (no VPS, no cloud bill)
+
+```bash
+git clone https://github.com/immanuwell/k16s-exam-simulator.git
+cd k16s-exam-simulator
+bash install.sh --laptop
+```
+
+This boots a disposable Ubuntu VM with [Lima](https://lima-vm.io) and runs the exact same provisioner inside it — same kubeadm cluster, same Incus worker nodes, same exam server. Your actual laptop OS is never touched; everything lives inside the VM's disk image. When done, open `http://localhost:8080/`.
+
+The VM defaults to 1 worker node and no web desktop (leaner than the VPS profile, since this shares your laptop with everything else you're running) — pass `--desktop`, `--workers 2`, `--cpus`, `--memory`, or `--disk` to change that.
+
+Once created, manage the environment with `local/k16s-local`:
+
+```bash
+local/k16s-local stop      # suspend the VM, free up RAM/CPU, state preserved
+local/k16s-local start     # resume where you left off
+local/k16s-local status    # VM state + exam UI / terminal URLs
+local/k16s-local ssh       # shell into the VM (add --root for sudo -i)
+local/k16s-local logs      # tail the exam server's logs
+local/k16s-local reset     # wipe the cluster and re-provision from scratch
+local/k16s-local destroy   # delete the VM entirely
+```
+
+See [`local/lima.yaml`](local/lima.yaml) for the VM template and [`local/k16s-local`](local/k16s-local) for the full command reference.
+
+### Option B — on a VPS or VM
 
 ```bash
 git clone https://github.com/immanuwell/k16s-exam-simulator.git
@@ -80,7 +114,7 @@ bash install.sh --host <your-vm-ip>
 That's it. The provisioner:
 1. Installs containerd, kubeadm, kubelet, kubectl on the host
 2. Runs `kubeadm init` and sets up Calico CNI
-3. Creates two Incus LXC containers (`node01`, `node02`) and joins them as workers
+3. Creates Incus LXC worker containers and joins them to the cluster
 4. Installs ttyd (web terminal) and nginx (reverse proxy)
 5. Deploys the K16S exam server with all question banks
 
@@ -122,6 +156,8 @@ Host VM  (Debian 13, kubeadm controlplane)
 - **Worker nodes:** Incus LXC containers with full systemd, `/dev/kmsg`, and containerd
 - **Terminal:** [ttyd](https://github.com/tsl0922/ttyd) running as `root` on the controlplane
 - **Exam server:** Go binary + SvelteKit frontend, reads question YAML files from disk at startup
+
+**Laptop mode** is the identical stack above, just relocated: instead of a cloud VPS, the "Host VM" is a local [Lima](https://lima-vm.io) VM (Ubuntu 24.04) managed by `local/k16s-local`, with nginx's port 80 forwarded to `localhost:8080` on your machine. Nothing about the controlplane/worker split, kubeadm, or Incus changes — it's the same real cluster, just running on your hardware instead of rented hardware.
 
 ---
 

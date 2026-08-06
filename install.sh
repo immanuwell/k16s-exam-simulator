@@ -3,26 +3,41 @@
 # Usage:
 #   On the VM directly:  bash install.sh [--profile cka] [--k8s 1.33] [--workers 1]
 #   Targeting a remote:  bash install.sh --host 1.2.3.4 [--key ~/.ssh/id_ed25519]
+#   On your laptop:      bash install.sh --laptop [--profile cka] [--cpus 4] [--memory 8]
 set -euo pipefail
 
 REMOTE_HOST=""
 SSH_KEY=""
 SSH_USER="root"
+LAPTOP="false"
 EXTRA_ARGS=()
+LAPTOP_ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --host)    REMOTE_HOST="$2";  shift 2 ;;
     --key)     SSH_KEY="$2";      shift 2 ;;
     --user)    SSH_USER="$2";     shift 2 ;;
-    --profile) EXTRA_ARGS+=("--profile" "$2"); shift 2 ;;
-    --k8s)     EXTRA_ARGS+=("--k8s" "$2");     shift 2 ;;
-    --workers) EXTRA_ARGS+=("--workers" "$2"); shift 2 ;;
+    --laptop)     LAPTOP="true"; shift ;;
+    --profile)    EXTRA_ARGS+=("--profile" "$2"); shift 2 ;;
+    --k8s)        EXTRA_ARGS+=("--k8s" "$2");     shift 2 ;;
+    --workers)    EXTRA_ARGS+=("--workers" "$2"); shift 2 ;;
+    --no-desktop) EXTRA_ARGS+=("--no-desktop");   shift ;;
+    --desktop)    LAPTOP_ARGS+=("--desktop");     shift ;;
+    --cpus)       LAPTOP_ARGS+=("--cpus" "$2");   shift 2 ;;
+    --memory)     LAPTOP_ARGS+=("--memory" "$2"); shift 2 ;;
+    --disk)       LAPTOP_ARGS+=("--disk" "$2");   shift 2 ;;
+    --port)       LAPTOP_ARGS+=("--port" "$2");   shift 2 ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ "${LAPTOP}" == "true" ]]; then
+  [[ -n "${REMOTE_HOST}" ]] && { echo "ERROR: --laptop and --host are mutually exclusive"; exit 1; }
+  exec "${SCRIPT_DIR}/local/k16s-local" up "${EXTRA_ARGS[@]:-}" "${LAPTOP_ARGS[@]:-}"
+fi
 
 if [[ -n "${REMOTE_HOST}" ]]; then
   SSH_OPTS=(-o StrictHostKeyChecking=no -o ConnectTimeout=10)

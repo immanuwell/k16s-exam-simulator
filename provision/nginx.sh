@@ -8,6 +8,8 @@ already_done "nginx" && { log_skip "nginx"; exit 0; }
 
 apt_install nginx
 
+DESKTOP_ENABLED="${K16S_DESKTOP:-true}"
+
 cat > /etc/nginx/sites-available/k16s <<'NGINXCONF'
 map $http_upgrade $connection_upgrade {
   default upgrade;
@@ -43,6 +45,10 @@ server {
     proxy_cache        off;
 
   }
+NGINXCONF
+
+if [[ "${DESKTOP_ENABLED}" == "true" ]]; then
+  cat >> /etc/nginx/sites-available/k16s <<'NGINXCONF'
 
   location /desktop/ {
     proxy_pass         http://127.0.0.1:6080/;
@@ -56,6 +62,12 @@ server {
     proxy_buffering    off;
     proxy_cache        off;
   }
+NGINXCONF
+else
+  log_skip "nginx /desktop/ route (K16S_DESKTOP=false)"
+fi
+
+cat >> /etc/nginx/sites-available/k16s <<'NGINXCONF'
 }
 NGINXCONF
 

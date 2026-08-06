@@ -1,0 +1,347 @@
+#!/usr/bin/env bash
+# K16S laptop mode — run the exam environment in a local Lima VM, no VPS needed.
+#
+# Usage:
+#   local/k16s-local up      [--profile cka] [--k8s 1.33] [--workers 1] [--desktop]
+#                             [--cpus 4] [--memory 8] [--disk 30] [--port 8080]
+#   local/k16s-local stop
+#   local/k16s-local start
+#   local/k16s-local restart
+#   local/k16s-local status
+#   local/k16s-local ssh      [--root]
+#   local/k16s-local logs     [server|kubelet|terminal|desktop]
+#   local/k16s-local open
+#   local/k16s-local reset    [--yes]
+#   local/k16s-local destroy  [--yes]
+#   local/k16s-local snapshot
+#   local/k16s-local revert   [--yes]
+set -euo pipefail
+
+if [[ -t 1 ]]; then
+  RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'
+  BLU='\033[0;34m'; CYN='\033[0;36m'; RST='\033[0m'
+else
+  RED=''; YEL=''; GRN=''; BLU=''; CYN=''; RST=''
+fi
+
+log_step() { echo -e "\n${BLU}▶${RST} ${1}"; }
+log_ok()   { echo -e "  ${GRN}✓${RST} ${1}"; }
+log_warn() { echo -e "  ${YEL}⚠${RST} ${1}"; }
+log_info() { echo -e "  ${CYN}·${RST} ${1}"; }
+die()      { echo -e "\n${RED}✗${RST} ${1}" >&2; exit 1; }
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TEMPLATE="${REPO_ROOT}/local/lima.yaml"
+INSTANCE="k16s"
+LIMA_HOME="${LIMA_HOME:-${HOME}/.lima}"
+PORT_FILE="${LIMA_HOME}/${INSTANCE}/k16s-local-port"
+
+# ── Defaults — deliberately leaner than the VPS profile (2 workers + desktop
+# on) since this VM shares the laptop with everything else the user runs. ──
+PROFILE="cka"
+K8S_VERSION="1.33"
+WORKERS="1"
+DESKTOP="false"
+CPUS="4"
+MEMORY_GIB="8"
+DISK_GIB="30"
+HOST_PORT="8080"
+ASSUME_YES="false"
+SSH_ROOT="false"
+
+# ── Preflight ────────────────────────────────────────────────────────────
+
+require_limactl() {
+  command -v limactl &>/dev/null && return 0
+  case "$(uname -s)" in
+    Darwin)
+      die "Lima is required for laptop mode but isn't installed.\n\n  Install it with:\n    brew install lima\n\n  Then re-run this command."
+      ;;
+    Linux)
+      die "Lima is required for laptop mode but isn't installed.\n\n  Install it with your package manager, e.g.:\n    sudo apt install lima      # Debian/Ubuntu with lima in repos\n  or grab a release binary:\n    https://github.com/lima-vm/lima/releases\n\n  Then re-run this command."
+      ;;
+    *)
+      die "Laptop mode needs Lima (https://lima-vm.io), which doesn't support $(uname -s). Use the VPS install path instead (see README.md)."
+      ;;
+  esac
+}
+
+check_resources() {
+  local host_cpus host_mem_gib
+  case "$(uname -s)" in
+    Darwin)
+      host_cpus=$(sysctl -n hw.ncpu 2>/dev/null || echo 0)
+      host_mem_gib=$(( $(sysctl -n hw.memsize 2>/dev/null || echo 0) / 1024 / 1024 / 1024 ))
+      ;;
+    Linux)
+      host_cpus=$(nproc 2>/dev/null || echo 0)
+      host_mem_gib=$(( $(awk '/MemTotal/ { print $2 }' /proc/meminfo 2>/dev/null || echo 0) / 1024 / 1024 ))
+      ;;
+    *) return 0 ;;
+  esac
+
+  [[ "${host_cpus}" -gt 0 && "${host_cpus}" -lt $((CPUS + 1)) ]] && \
+    log_warn "Host has ${host_cpus} CPUs; the VM alone wants ${CPUS}. Things will be sluggish — pass --cpus to lower it."
+
+  local headroom=$((host_mem_gib - MEMORY_GIB))
+  [[ "${host_mem_gib}" -gt 0 && "${headroom}" -lt 4 ]] && \
+    log_warn "Host has ${host_mem_gib}GB RAM; giving the VM ${MEMORY_GIB}GB leaves ~${headroom}GB for everything else on your laptop. Pass --memory to lower it if that's too tight."
+}
+
+# ── Instance helpers ─────────────────────────────────────────────────────
+
+instance_exists() {
+  limactl list --format '{{.Name}}' 2>/dev/null | grep -qx "${INSTANCE}"
+}
+
+instance_status() {
+  limactl list "${INSTANCE}" --format '{{.Status}}' 2>/dev/null || echo "Missing"
+}
+
+save_port() {
+  mkdir -p "$(dirname "${PORT_FILE}")"
+  echo "${1}" > "${PORT_FILE}"
+}
+
+read_port() {
+  [[ -f "${PORT_FILE}" ]] && cat "${PORT_FILE}" || echo "8080"
+}
+
+render_template() {
+  local out
+  out="$(mktemp -t k16s-lima.XXXXXX.yaml)"
+  sed \
+    -e "s|__CPUS__|${CPUS}|g" \
+    -e "s|__MEMORY_GIB__|${MEMORY_GIB}|g" \
+    -e "s|__DISK_GIB__|${DISK_GIB}|g" \
+    -e "s|__REPO_ROOT__|${REPO_ROOT}|g" \
+    -e "s|__HOST_PORT__|${HOST_PORT}|g" \
+    "${TEMPLATE}" > "${out}"
+  echo "${out}"
+}
+
+# Builds the remote provisioning command. $HOME is intentionally left
+# unescaped-for-later — it must expand inside the *guest's* login shell
+# (where it resolves to the mounted repo's parent), not the host shell that's
+# assembling this string, so every use below is written with a literal
+# backslash-dollar.
+remote_provision_cmd() {
+  echo "sudo env K16S_WORKER_COUNT=${WORKERS} K16S_K8S_VERSION=${K8S_VERSION} K16S_DESKTOP=${DESKTOP} bash \$HOME/k16s/provision/main.sh --profile ${PROFILE}"
+}
+
+provision() {
+  log_step "Provisioning K16S inside the VM (this takes several minutes on first run)"
+  limactl shell "${INSTANCE}" -- bash -lc "$(remote_provision_cmd)"
+}
+
+print_urls() {
+  local port; port="$(read_port)"
+  echo ""
+  echo -e "  Exam UI:   ${CYN}http://localhost:${port}/${RST}"
+  echo -e "  Terminal:  ${CYN}http://localhost:${port}/terminal/${RST}"
+  if [[ "${DESKTOP}" == "true" ]]; then
+    echo -e "  Desktop:   ${CYN}http://localhost:${port}/desktop/vnc_lite.html?autoconnect=true&resize=remote&path=desktop/websockify${RST}"
+  fi
+  local pass
+  pass=$(limactl shell "${INSTANCE}" -- sudo cat /etc/k16s/candidate-password 2>/dev/null || echo "")
+  [[ -n "${pass}" ]] && echo -e "  Candidate: ${YEL}${pass}${RST} (only needed for \`k16s-local ssh\`; the exam UI doesn't ask for it)"
+  echo ""
+}
+
+# ── Subcommands ──────────────────────────────────────────────────────────
+
+cmd_up() {
+  require_limactl
+  check_resources
+
+  if instance_exists; then
+    local status; status="$(instance_status)"
+    if [[ "${status}" == "Running" ]]; then
+      log_ok "k16s VM is already running"
+      print_urls
+      return 0
+    fi
+    log_step "Resuming existing k16s VM"
+    limactl start "${INSTANCE}"
+    log_ok "VM resumed — systemd brings the exam services back up on its own"
+    print_urls
+    return 0
+  fi
+
+  log_step "Creating k16s VM (${CPUS} vCPU / ${MEMORY_GIB}GB RAM / ${DISK_GIB}GB disk)"
+  local rendered; rendered="$(render_template)"
+  trap 'rm -f "${rendered}"' RETURN
+  limactl start --name "${INSTANCE}" --tty=false "${rendered}"
+  save_port "${HOST_PORT}"
+  log_ok "VM created and booted"
+
+  provision
+  log_ok "K16S is ready"
+  print_urls
+}
+
+cmd_stop() {
+  instance_exists || die "No k16s VM found — run 'k16s-local up' first"
+  log_step "Suspending k16s VM"
+  limactl stop "${INSTANCE}"
+  log_ok "Stopped — laptop resources freed, state preserved. Resume with 'k16s-local start'"
+}
+
+cmd_start() {
+  instance_exists || die "No k16s VM found — run 'k16s-local up' first"
+  log_step "Resuming k16s VM"
+  limactl start "${INSTANCE}"
+  log_ok "Resumed"
+  print_urls
+}
+
+cmd_restart() {
+  instance_exists || die "No k16s VM found — run 'k16s-local up' first"
+  limactl stop "${INSTANCE}" 2>/dev/null || true
+  limactl start "${INSTANCE}"
+  log_ok "Restarted"
+  print_urls
+}
+
+cmd_status() {
+  if ! instance_exists; then
+    log_info "No k16s VM exists yet — run 'k16s-local up'"
+    return 0
+  fi
+  limactl list "${INSTANCE}"
+  [[ "$(instance_status)" == "Running" ]] && print_urls
+}
+
+cmd_ssh() {
+  instance_exists || die "No k16s VM found — run 'k16s-local up' first"
+  if [[ "${SSH_ROOT}" == "true" ]]; then
+    limactl shell "${INSTANCE}" -- sudo -i
+  else
+    limactl shell "${INSTANCE}"
+  fi
+}
+
+cmd_logs() {
+  instance_exists || die "No k16s VM found — run 'k16s-local up' first"
+  local unit="${1:-server}"
+  case "${unit}" in
+    server)   unit=k16s-server ;;
+    kubelet)  unit=kubelet ;;
+    terminal) unit=k16s-terminal ;;
+    desktop)  unit=k16s-desktop ;;
+    *) die "Unknown log target '${unit}' — use one of: server, kubelet, terminal, desktop" ;;
+  esac
+  limactl shell "${INSTANCE}" -- sudo journalctl -u "${unit}" -f
+}
+
+cmd_open() {
+  instance_exists || die "No k16s VM found — run 'k16s-local up' first"
+  local port; port="$(read_port)"
+  local url="http://localhost:${port}/"
+  case "$(uname -s)" in
+    Darwin) open "${url}" ;;
+    Linux)  xdg-open "${url}" 2>/dev/null || log_info "Open manually: ${url}" ;;
+    *)      log_info "Open manually: ${url}" ;;
+  esac
+}
+
+confirm() {
+  [[ "${ASSUME_YES}" == "true" ]] && return 0
+  read -r -p "${1} [y/N] " reply
+  [[ "${reply}" =~ ^[Yy]$ ]]
+}
+
+cmd_reset() {
+  instance_exists || die "No k16s VM found — run 'k16s-local up' first"
+  confirm "This wipes the entire cluster (etcd, workers, exam progress) and re-provisions from scratch. Continue?" \
+    || { log_info "Aborted"; return 0; }
+
+  log_step "Destroying k16s VM"
+  limactl stop "${INSTANCE}" --force 2>/dev/null || true
+  limactl delete "${INSTANCE}" --force
+  log_ok "VM destroyed"
+
+  log_step "Recreating k16s VM"
+  local rendered; rendered="$(render_template)"
+  trap 'rm -f "${rendered}"' RETURN
+  limactl start --name "${INSTANCE}" --tty=false "${rendered}"
+  save_port "${HOST_PORT}"
+  log_ok "VM created and booted"
+
+  provision
+  log_ok "K16S reset complete"
+  print_urls
+}
+
+cmd_destroy() {
+  instance_exists || { log_info "No k16s VM exists"; return 0; }
+  confirm "This deletes the k16s VM and all its data permanently. Continue?" \
+    || { log_info "Aborted"; return 0; }
+  limactl stop "${INSTANCE}" --force 2>/dev/null || true
+  limactl delete "${INSTANCE}" --force
+  rm -f "${PORT_FILE}"
+  log_ok "k16s VM deleted"
+}
+
+cmd_snapshot() {
+  instance_exists || die "No k16s VM found — run 'k16s-local up' first"
+  log_step "Snapshotting k16s VM (tag: clean)"
+  log_warn "Experimental — only works when the instance uses the qemu driver (Lima's default on Linux; on macOS it needs vmType: qemu set explicitly, which trades away vz's faster boot/battery life)."
+  limactl snapshot create "${INSTANCE}" --tag clean \
+    || die "Snapshot failed — most likely this instance is running the vz driver, which doesn't support snapshots yet. Use 'k16s-local reset' instead."
+  log_ok "Snapshot 'clean' saved — restore anytime with 'k16s-local revert'"
+}
+
+cmd_revert() {
+  instance_exists || die "No k16s VM found — run 'k16s-local up' first"
+  confirm "This reverts the VM to the 'clean' snapshot, discarding everything since. Continue?" \
+    || { log_info "Aborted"; return 0; }
+  limactl snapshot apply "${INSTANCE}" --tag clean \
+    || die "Revert failed — no 'clean' snapshot found, or the driver doesn't support snapshots. Run 'k16s-local snapshot' first, or use 'k16s-local reset'."
+  log_ok "Reverted to snapshot 'clean'"
+  print_urls
+}
+
+usage() {
+  sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+}
+
+# ── Argument parsing ─────────────────────────────────────────────────────
+
+SUBCOMMAND="${1:-}"
+[[ -n "${SUBCOMMAND}" ]] && shift || true
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --profile) PROFILE="$2"; shift 2 ;;
+    --k8s)     K8S_VERSION="$2"; shift 2 ;;
+    --workers) WORKERS="$2"; shift 2 ;;
+    --desktop)    DESKTOP="true"; shift ;;
+    --no-desktop) DESKTOP="false"; shift ;;
+    --cpus)    CPUS="$2"; shift 2 ;;
+    --memory)  MEMORY_GIB="$2"; shift 2 ;;
+    --disk)    DISK_GIB="$2"; shift 2 ;;
+    --port)    HOST_PORT="$2"; shift 2 ;;
+    --yes|-y)  ASSUME_YES="true"; shift ;;
+    --root)    SSH_ROOT="true"; shift ;;
+    server|kubelet|terminal|desktop) LOG_TARGET="$1"; shift ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+case "${SUBCOMMAND}" in
+  up)       cmd_up ;;
+  stop)     cmd_stop ;;
+  start)    cmd_start ;;
+  restart)  cmd_restart ;;
+  status)   cmd_status ;;
+  ssh)      cmd_ssh ;;
+  logs)     cmd_logs "${LOG_TARGET:-server}" ;;
+  open)     cmd_open ;;
+  reset)    cmd_reset ;;
+  destroy)  cmd_destroy ;;
+  snapshot) cmd_snapshot ;;
+  revert)   cmd_revert ;;
+  ""|help|-h|--help) usage ;;
+  *) die "Unknown subcommand: ${SUBCOMMAND}\n\nRun 'k16s-local help' for usage." ;;
+esac

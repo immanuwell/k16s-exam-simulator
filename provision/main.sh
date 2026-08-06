@@ -19,12 +19,15 @@ echo ""
 EXAM_PROFILE="${K16S_PROFILE:-cka}"   # cka | cks | ckad
 K8S_VERSION="${K16S_K8S_VERSION:-1.33}"
 WORKER_COUNT="${K16S_WORKER_COUNT:-1}"
+DESKTOP_ENABLED="${K16S_DESKTOP:-true}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --profile)   EXAM_PROFILE="$2"; shift 2 ;;
-    --k8s)       K8S_VERSION="$2";  shift 2 ;;
-    --workers)   WORKER_COUNT="$2"; shift 2 ;;
+    --profile)     EXAM_PROFILE="$2"; shift 2 ;;
+    --k8s)         K8S_VERSION="$2";  shift 2 ;;
+    --workers)     WORKER_COUNT="$2"; shift 2 ;;
+    --no-desktop)  DESKTOP_ENABLED="false"; shift ;;
+    --desktop)     DESKTOP_ENABLED="true"; shift ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
 done
@@ -32,10 +35,12 @@ done
 export K16S_PROFILE="${EXAM_PROFILE}"
 export K16S_K8S_VERSION="${K8S_VERSION}"
 export K16S_WORKER_COUNT="${WORKER_COUNT}"
+export K16S_DESKTOP="${DESKTOP_ENABLED}"
 
 log_info "Profile:         ${EXAM_PROFILE}"
 log_info "Kubernetes:      v${K8S_VERSION}.x"
 log_info "Worker nodes:    ${WORKER_COUNT}"
+log_info "Web desktop:     ${DESKTOP_ENABLED}"
 echo ""
 
 mkdir -p /var/lib/k16s/markers
@@ -57,7 +62,11 @@ run_step incus        # create worker containers (image already cached)
 run_step node-join
 run_step candidate
 run_step ttyd
-run_step desktop
+if [[ "${DESKTOP_ENABLED}" == "true" ]]; then
+  run_step desktop
+else
+  log_skip "desktop (K16S_DESKTOP=false)"
+fi
 run_step nginx
 run_step k16s-server
 

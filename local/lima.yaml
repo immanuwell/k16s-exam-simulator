@@ -1,0 +1,53 @@
+# K16S laptop-mode VM template (Lima — https://lima-vm.io).
+#
+# This is a template, not a runnable config: local/k16s-local fills in the
+# __TOKEN__ placeholders below and writes the result to a temp file before
+# calling `limactl start`. Don't `limactl start` this file directly.
+#
+# Guest OS is Ubuntu 24.04 LTS (not Debian 13, unlike the VPS flow) because
+# Lima's own cloud-image support for Ubuntu is the most battle-tested path
+# across both the qemu (Linux) and vz (macOS) drivers. provision/preflight.sh
+# already accepts Ubuntu 22.04/24.04 as a first-class target, so nothing in
+# the provisioner needs to special-case this.
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+    arch: "x86_64"
+  - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
+    arch: "aarch64"
+
+cpus: __CPUS__
+memory: "__MEMORY_GIB__GiB"
+disk: "__DISK_GIB__GiB"
+
+# vmType intentionally left unset: Lima picks vz on macOS 13+ and qemu on
+# Linux, which is the right default for each. vz boots faster and is lighter
+# on battery on Apple Silicon, but (as of writing) only the qemu driver
+# supports `limactl snapshot` — that's why `k16s-local snapshot/revert` is
+# opt-in and checks the driver before offering itself.
+
+# No nestedVirtualization needed: Incus worker nodes are LXC containers
+# (kernel namespaces + cgroups), not nested VMs, so this VM just needs a
+# normal Linux kernel with cgroup v2 and the overlay/br_netfilter modules —
+# same requirement provision/kernel.sh already enforces on a bare VPS host.
+
+mounts:
+  - location: "__REPO_ROOT__"
+    # Under the guest user's home rather than an arbitrary absolute path —
+    # Lima has supported home-relative mounts since the earliest releases,
+    # arbitrary mountPoints are a newer addition not worth depending on here.
+    mountPoint: "{{.Home}}/k16s"
+    writable: true
+
+# guest:80 (nginx) -> host:127.0.0.1:__HOST_PORT__, so opening the exam UI
+# never needs a privileged port or sudo on the host side.
+portForwards:
+  - guestPort: 80
+    hostIP: "127.0.0.1"
+    hostPort: __HOST_PORT__
+
+containerd:
+  system: false
+  user: false
+
+ssh:
+  loadDotSSHPubKeys: true
