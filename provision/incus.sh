@@ -77,12 +77,15 @@ for i in $(seq 1 "${WORKER_COUNT}"); do
     boot.autostart=true \
     linux.kernel_modules="overlay,br_netfilter,ip_tables,ip6_tables,nf_conntrack"
 
-  incus config set "${NAME}" raw.lxc "$(cat <<'RAWLXC'
-lxc.apparmor.profile=unconfined
-lxc.cap.drop=
-lxc.mount.auto=proc:rw sys:rw cgroup:rw:force
-RAWLXC
-)"
+  # Must be passed as a single `key=value` argument. With the older
+  # `<key> <value>` form, Incus 6.x+ re-parses a multi-line value as further
+  # key=value pairs and fails with "cannot set 'lxc.apparmor.profile' ...:
+  # unknown key", which aborts the provisioner under `set -e`.
+  RAW_LXC=$(printf '%s\n' \
+    'lxc.apparmor.profile=unconfined' \
+    'lxc.cap.drop=' \
+    'lxc.mount.auto=proc:rw sys:rw cgroup:rw:force')
+  incus config set "${NAME}" "raw.lxc=${RAW_LXC}"
 
   # kubelet requires /dev/kmsg; not exposed in LXC containers by default
   incus config device add "${NAME}" kmsg unix-char source=/dev/kmsg path=/dev/kmsg 2>/dev/null || true

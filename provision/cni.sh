@@ -12,7 +12,13 @@ CALICO_VERSION="${K16S_CALICO_VERSION:-v3.29.1}"
 
 log_info "Installing Calico ${CALICO_VERSION} via Tigera operator..."
 
-kubectl apply -f \
+# Server-side apply is required here: the installations.operator.tigera.io CRD
+# is larger than the 262144-byte ceiling on the kubectl.kubernetes.io/last-applied-
+# configuration annotation that client-side apply writes, so a plain `kubectl apply`
+# fails to create it. The failure is invisible at this line (it is swallowed by the
+# `|| true` that tolerates re-runs), and only surfaces further down as
+# "no matches for kind Installation" — which aborts the whole provisioner.
+kubectl apply --server-side --force-conflicts -f \
   "https://raw.githubusercontent.com/projectcalico/calico/${CALICO_VERSION}/manifests/tigera-operator.yaml" \
   2>&1 | grep -v "^$" || true
 
