@@ -61,6 +61,7 @@ run_step cni          # ← and this; image ready by the time we need containers
 run_step metrics-server # control plane is untainted, so this can run before workers exist
 run_step incus        # create worker containers (image already cached)
 run_step node-join
+run_step node-ssh     # workers need sshd before `ssh node01` can work
 run_step candidate
 run_step ttyd
 if [[ "${DESKTOP_ENABLED}" == "true" ]]; then

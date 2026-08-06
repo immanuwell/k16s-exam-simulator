@@ -6,7 +6,7 @@ log_step "Candidate user environment"
 
 already_done "candidate" && { log_skip "candidate user"; exit 0; }
 
-WORKER_COUNT="${K16S_WORKER_COUNT:-2}"
+WORKER_COUNT="${K16S_WORKER_COUNT:-1}"
 NET_BASE="${K16S_NET_BASE:-10.10.0}"
 NODE_IP_START=11
 CANDIDATE_PASS="${K16S_CANDIDATE_PASS:-k16s-$(openssl rand -hex 4)}"
@@ -41,7 +41,9 @@ for i in $(seq 1 "${WORKER_COUNT}"); do
   incus exec "${NAME}" -- bash -c "
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
-    echo '${CANDIDATE_PUBKEY}' >> /root/.ssh/authorized_keys
+    touch /root/.ssh/authorized_keys
+    grep -qxF '${CANDIDATE_PUBKEY}' /root/.ssh/authorized_keys \
+      || echo '${CANDIDATE_PUBKEY}' >> /root/.ssh/authorized_keys
     chmod 600 /root/.ssh/authorized_keys
   "
   log_ok "Candidate SSH key installed on ${NAME}"
