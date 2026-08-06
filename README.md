@@ -153,6 +153,7 @@ Host VM  (Debian 13, kubeadm controlplane)
 
 - **Kubernetes:** v1.33.x via kubeadm
 - **CNI:** Calico (VXLAN, supports NetworkPolicy)
+- **Metrics:** [metrics-server](https://github.com/kubernetes-sigs/metrics-server), so `kubectl top nodes`/`kubectl top pods` work out of the box
 - **Worker nodes:** Incus LXC containers with full systemd, `/dev/kmsg`, and containerd
 - **Terminal:** [ttyd](https://github.com/tsl0922/ttyd) running as `root` on the controlplane
 - **Exam server:** Go binary + SvelteKit frontend, reads question YAML files from disk at startup

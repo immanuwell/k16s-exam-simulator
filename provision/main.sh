@@ -58,6 +58,7 @@ run_step incus-init   # install Incus + start base image download in background
 run_step kubeadm      # ← image downloads in parallel with this
 run_step cluster-init # ← and this
 run_step cni          # ← and this; image ready by the time we need containers
+run_step metrics-server # control plane is untainted, so this can run before workers exist
 run_step incus        # create worker containers (image already cached)
 run_step node-join
 run_step candidate
