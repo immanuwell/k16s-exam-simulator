@@ -218,9 +218,28 @@ func handleSetup(db *sql.DB, examDir string, questions map[string][]Question, mo
 		ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
 		defer cancel()
 
+		beforeOpt := listOptEntries()
+
 		cmd := exec.CommandContext(ctx, "bash", script)
 		cmd.Env = append(os.Environ(), "KUBECONFIG=/etc/kubernetes/admin.conf")
 		out, err := cmd.CombinedOutput()
+
+		// setup.sh runs as root (k16s-server's own systemd unit is
+		// User=root), so any /opt/<topic> scratch directory it creates —
+		// nearly every question has one — comes out root-owned, 755. The
+		// candidate user the exam terminal actually runs as then can't
+		// write their answer into it, and for the PKI questions that seed
+		// an input key file (0600, root-owned) can't even read it. Neither
+		// showed up in testing before because grading was always exercised
+		// as root over SSH directly, never as the actual restricted
+		// candidate — confirmed by trying it that way, not assumed.
+		// Only newly-created top-level /opt entries are touched, so this
+		// never reaches pre-existing content already under /opt (e.g. the
+		// repo checkout itself at /opt/k16s in --host mode), and it runs
+		// regardless of setup.sh's exit status since a partial failure can
+		// still have left a partially-built, inaccessible directory behind.
+		chownNewOptEntries(beforeOpt)
+
 		if err != nil {
 			writeJSON(w, map[string]any{"ok": false, "output": string(out)})
 			return
@@ -232,5 +251,37 @@ func handleSetup(db *sql.DB, examDir string, questions map[string][]Question, mo
 		}
 
 		writeJSON(w, map[string]any{"ok": true, "output": string(out)})
+	}
+}
+
+// listOptEntries snapshots /opt's top-level entry names so a later call can
+// tell what setup.sh just created versus what was already there.
+func listOptEntries() map[string]bool {
+	names := map[string]bool{}
+	entries, err := os.ReadDir("/opt")
+	if err != nil {
+		return names // /opt not existing yet is fine — everything after is "new"
+	}
+	for _, e := range entries {
+		names[e.Name()] = true
+	}
+	return names
+}
+
+// chownNewOptEntries hands ownership of whatever setup.sh just added under
+// /opt to the candidate user, recursively. See handleSetup for why.
+func chownNewOptEntries(before map[string]bool) {
+	entries, err := os.ReadDir("/opt")
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if before[e.Name()] {
+			continue
+		}
+		path := filepath.Join("/opt", e.Name())
+		if err := exec.Command("chown", "-R", "candidate:candidate", path).Run(); err != nil {
+			log.Printf("chown %s: %v", path, err)
+		}
 	}
 }
