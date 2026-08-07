@@ -1,5 +1,6 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import { marked } from 'marked';
   import { api } from '$lib/api.js';
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -73,37 +74,30 @@
     return 'bg-[#4a5169] text-slate-400 ring-[#6b7392]';
   }
 
+  // Exam text is authored as Markdown in the YAML under /var/lib/k16s/exams.
+  // The previous hand-rolled renderer dropped ordered lists entirely and emitted
+  // fenced code blocks as <pre> nested inside <p>, which browsers auto-close into
+  // a run of stray empty paragraphs. marked handles the full grammar — including
+  // the numbered steps and indented fences the questions actually use.
+  //
+  // Exam content is root-owned and ships with the repo, so it is trusted, but the
+  // old renderer escaped raw HTML and there is no reason to start honouring it:
+  // render literal tags as visible text rather than live markup. marked escapes
+  // everything else itself, so this must not be combined with pre-escaping the
+  // input — that would double-escape entities inside code blocks.
+  const escapeHtml = (s) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  marked.use({
+    gfm: true,
+    renderer: {
+      html: (token) => escapeHtml(token.text),
+    },
+  });
+
   function md(text) {
     if (!text) return '';
-    let s = text
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // Fenced code blocks
-    s = s.replace(/```[\w]*\n([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-    // Inline code
-    s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-    // Bold
-    s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-    // Lists
-    const lines = s.split('\n');
-    let html = '';
-    let inList = false;
-    for (const line of lines) {
-      if (/^- /.test(line)) {
-        if (!inList) { html += '<ul class="list-disc pl-5 space-y-1 my-2">'; inList = true; }
-        html += `<li>${line.slice(2)}</li>`;
-      } else {
-        if (inList) { html += '</ul>'; inList = false; }
-        if (line.trim() === '') {
-          html += '<br>';
-        } else if (!line.startsWith('<pre>')) {
-          html += `<p>${line}</p>`;
-        } else {
-          html += line;
-        }
-      }
-    }
-    if (inList) html += '</ul>';
-    return html;
+    return marked.parse(text);
   }
 
   // ── Timer ──────────────────────────────────────────────────────────────────
@@ -353,7 +347,22 @@
               </div>
             {/if}
 
-            <div class="text-sm text-slate-300 leading-relaxed space-y-1 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_p]:my-1 [&_strong]:text-slate-200">
+            <div
+              class="text-sm text-slate-300 leading-relaxed
+                     [&_p]:my-2 [&_strong]:text-slate-200 [&_strong]:font-semibold
+                     [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5
+                     [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_li]:pl-1
+                     [&_li>ul]:my-1 [&_li>ol]:my-1
+                     [&_pre]:my-2 [&_li_pre]:my-1.5
+                     [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm
+                     [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold
+                     [&_h1]:text-slate-200 [&_h2]:text-slate-200 [&_h3]:text-slate-200
+                     [&_h1]:mt-4 [&_h2]:mt-4 [&_h3]:mt-3 [&_h1]:mb-1 [&_h2]:mb-1 [&_h3]:mb-1
+                     [&_a]:text-[#3b82f6] [&_a]:underline hover:[&_a]:text-blue-300
+                     [&_blockquote]:border-l-2 [&_blockquote]:border-[#5a6280]
+                     [&_blockquote]:pl-3 [&_blockquote]:text-slate-400 [&_blockquote]:my-2
+                     [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+            >
               {@html md(currentQuestion.description)}
             </div>
 
