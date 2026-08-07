@@ -26,6 +26,10 @@ func main() {
 		questions = map[string][]Question{}
 	}
 
+	// Answer directories must belong to the candidate before the first question
+	// is opened — Setup is a per-question button and may never be pressed.
+	ensureAllWorkspaces(questions, examDir)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/status", handleStatus(db, questions))
@@ -34,7 +38,7 @@ func main() {
 	mux.HandleFunc("POST /api/session/end", handleEndSession(db))
 	mux.HandleFunc("GET /api/questions", handleListQuestions(questions))
 	mux.HandleFunc("POST /api/questions/{id}/check", handleCheck(db, questions, examDir))
-	mux.HandleFunc("POST /api/questions/{id}/setup", handleSetup(db, examDir))
+	mux.HandleFunc("POST /api/questions/{id}/setup", handleSetup(db, questions, examDir))
 
 	sub, err := fs.Sub(frontendFiles, "frontend/build")
 	if err != nil {
