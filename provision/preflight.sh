@@ -41,6 +41,10 @@ log_ok "Disk free: ${DISK_FREE_MB}MB"
 SWAP=$(swapon --show --noheadings 2>/dev/null | wc -l)
 if [[ "${SWAP}" -gt 0 ]]; then
   log_warn "Swap is enabled — disabling (required by kubelet)"
+  # Recorded once, before we destroy it, so `uninstall.sh` can put the exact
+  # same line(s) back rather than guessing at a generic "swap" entry.
+  [[ -f /var/lib/k16s/original-fstab-swap ]] \
+    || grep '\bswap\b' /etc/fstab > /var/lib/k16s/original-fstab-swap || true
   swapoff -a
   sed -i '/\bswap\b/d' /etc/fstab
 fi
@@ -50,6 +54,12 @@ grep -q cgroup2 /proc/mounts || die "cgroup v2 not mounted — kernel or systemd
 log_ok "cgroup v2 mounted"
 
 if [[ "$(hostname)" != "k16s" ]]; then
+  # Recorded once, before we rename the host, so `uninstall.sh` can put the
+  # real original name back instead of leaving every K16S host stuck as
+  # "k16s" forever. Guarded on first-run only — a second install.sh run
+  # would otherwise "record" k16s itself as the original.
+  [[ -f /var/lib/k16s/original-hostname ]] \
+    || hostname > /var/lib/k16s/original-hostname
   hostnamectl set-hostname k16s
   log_info "Hostname set to k16s"
 fi

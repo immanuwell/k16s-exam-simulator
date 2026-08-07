@@ -19,12 +19,16 @@ if ! cmd_exists etcdctl; then
   install "/tmp/etcd-${ETCD_VERSION}-linux-${ARCH}/etcdctl" /usr/local/bin/etcdctl
   rm -rf "/tmp/etcd-${ETCD_VERSION}-linux-${ARCH}"
   log_ok "etcdctl ${ETCD_VERSION} installed"
+  # Only marked when *we* installed it — uninstall.sh uses this to avoid
+  # deleting a toolchain that was already on the host before K16S ran.
+  mark_done "provisioned-etcdctl"
 fi
 
 if ! cmd_exists helm; then
   log_info "Installing helm..."
   curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
   log_ok "helm installed"
+  mark_done "provisioned-helm"
 fi
 
 # ── Exam data ─────────────────────────────────────────────────────────────
@@ -55,6 +59,7 @@ elif [[ -d "${REPO_ROOT}/server" ]]; then
     ln -sf /usr/local/go/bin/go    /usr/local/bin/go
     ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
     log_ok "Go ${GO_VERSION} installed"
+    mark_done "provisioned-go"
   fi
 
   # Test for npm as well as node, and reject a too-old node. On Ubuntu the
@@ -69,6 +74,7 @@ elif [[ -d "${REPO_ROOT}/server" ]]; then
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
     apt_install nodejs
     log_ok "Node.js $(node --version) / npm $(npm --version) installed"
+    mark_done "provisioned-node"
   fi
 
   pushd "${REPO_ROOT}/server" > /dev/null

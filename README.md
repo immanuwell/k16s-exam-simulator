@@ -178,6 +178,22 @@ After adding files, re-run `bash install.sh --host <ip>` to sync and restart the
 
 ---
 
+## Uninstalling
+
+`uninstall.sh` mirrors `install.sh`'s three modes and removes everything: the kubeadm cluster, all Incus worker containers, every package K16S installed, the candidate user, and `/var/lib/k16s` + `/etc/k16s`. If K16S changed this host's hostname or disabled its swap, both are restored to what they were before.
+
+```bash
+bash uninstall.sh                        # on the VM directly — asks for confirmation
+bash uninstall.sh --yes                  # skip the confirmation prompt
+bash uninstall.sh --host <your-vm-ip>    # remote, same as install.sh --host
+bash uninstall.sh --laptop               # deletes the whole Lima VM — nothing else to clean up
+bash uninstall.sh --dry-run              # print what would be removed without touching anything
+```
+
+Laptop mode is already a clean teardown by construction — deleting the Lima VM's disk deletes everything K16S ever touched, so `--laptop` just deletes the VM. For VPS/host mode, teardown only removes tools it can prove it installed (etcdctl/helm/Go/Node.js are left alone if they were already on the machine before K16S ran) — see `provision/teardown.sh` for the full reversal, one section per `provision/*.sh` step it undoes.
+
+---
+
 ## License
 
 [PolyForm Noncommercial 1.0.0](LICENSE) — free for personal and non-commercial use; commercial use (including SaaS or paid services built on top of this) requires a separate agreement.
