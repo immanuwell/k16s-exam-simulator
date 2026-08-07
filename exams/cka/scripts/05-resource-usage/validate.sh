@@ -13,29 +13,39 @@ for f in top-cpu-pod top-mem-pod top-cpu-node; do
   fi
 done
 
-# Verify top-cpu-pod is a real pod name
-CPU_POD=$(cat /opt/cka/top-cpu-pod.txt | tr -d '[:space:]')
-if ! kubectl get pods -A --no-headers 2>/dev/null | awk '{print $2}' | grep -qx "$CPU_POD"; then
+CPU_POD=$(tr -d '[:space:]' < /opt/cka/top-cpu-pod.txt)
+MEM_POD=$(tr -d '[:space:]' < /opt/cka/top-mem-pod.txt)
+CPU_NODE=$(tr -d '[:space:]' < /opt/cka/top-cpu-node.txt)
+
+# Captured up front rather than piped straight into head/grep -qx: a live
+# kubectl process feeding a consumer that closes early (head -1 especially,
+# right after the first line) can get SIGPIPE'd, which pipefail turns into
+# the pipeline's exit status. On the unguarded assignment below, `set -e`
+# would then abort the script with no FAIL message — a candidate's correct
+# answer failing this check purely on write-timing luck, not on anything
+# they did wrong. Reproduced directly during an end-to-end run, not
+# theoretical: exit 141 (SIGPIPE), no output, one run in several.
+ALL_PODS=$(kubectl get pods -A --no-headers 2>/dev/null)
+ALL_NODES=$(kubectl get nodes --no-headers 2>/dev/null)
+TOP_PODS_BY_CPU=$(kubectl top pods -A --sort-by=cpu --no-headers 2>/dev/null)
+
+if ! echo "$ALL_PODS" | awk '{print $2}' | grep -qx "$CPU_POD"; then
   echo "FAIL: '$CPU_POD' in top-cpu-pod.txt is not a valid pod name"
   exit 1
 fi
 
-# Verify top-mem-pod is a real pod name
-MEM_POD=$(cat /opt/cka/top-mem-pod.txt | tr -d '[:space:]')
-if ! kubectl get pods -A --no-headers 2>/dev/null | awk '{print $2}' | grep -qx "$MEM_POD"; then
+if ! echo "$ALL_PODS" | awk '{print $2}' | grep -qx "$MEM_POD"; then
   echo "FAIL: '$MEM_POD' in top-mem-pod.txt is not a valid pod name"
   exit 1
 fi
 
-# Verify top-cpu-node is a real node name
-CPU_NODE=$(cat /opt/cka/top-cpu-node.txt | tr -d '[:space:]')
-if ! kubectl get nodes --no-headers 2>/dev/null | awk '{print $1}' | grep -qx "$CPU_NODE"; then
+if ! echo "$ALL_NODES" | awk '{print $1}' | grep -qx "$CPU_NODE"; then
   echo "FAIL: '$CPU_NODE' in top-cpu-node.txt is not a valid node name"
   exit 1
 fi
 
 # Verify CPU pod is actually the top CPU consumer
-ACTUAL_TOP=$(kubectl top pods -A --sort-by=cpu --no-headers 2>/dev/null | head -1 | awk '{print $2}')
+ACTUAL_TOP=$(echo "$TOP_PODS_BY_CPU" | head -1 | awk '{print $2}')
 if [[ "$CPU_POD" != "$ACTUAL_TOP" ]]; then
   echo "FAIL: top-cpu-pod.txt says '$CPU_POD' but actual top-CPU pod is '$ACTUAL_TOP'"
   exit 1

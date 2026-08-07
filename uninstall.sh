@@ -33,7 +33,8 @@ fi
 
 if [[ -n "${REMOTE_HOST}" ]]; then
   SSH_OPTS=(-o StrictHostKeyChecking=no -o ConnectTimeout=10)
-  [[ -n "${SSH_KEY}" ]] && SSH_OPTS+=(-i "${SSH_KEY}")
+  # See install.sh for why IdentitiesOnly is paired with -i here.
+  [[ -n "${SSH_KEY}" ]] && SSH_OPTS+=(-i "${SSH_KEY}" -o IdentitiesOnly=yes)
 
   echo "→ Uploading teardown scripts to ${SSH_USER}@${REMOTE_HOST}:/opt/k16s ..."
   ssh "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" "mkdir -p /opt/k16s"

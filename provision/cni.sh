@@ -22,6 +22,18 @@ kubectl apply --server-side --force-conflicts -f \
   "https://raw.githubusercontent.com/projectcalico/calico/${CALICO_VERSION}/manifests/tigera-operator.yaml" \
   2>&1 | grep -v "^$" || true
 
+# `kubectl apply` returning doesn't mean the API server has finished
+# registering the CRD in its REST mapping yet — that's a separate,
+# asynchronous step. Applying the Installation/APIServer CRs immediately
+# after is a real race: it fails intermittently with "no matches for kind
+# Installation", depending purely on how fast the API server processes the
+# CRD relative to how fast this script reaches the next apply. Caught by an
+# actual end-to-end run, not by re-checking the manifest.
+log_info "Waiting for Tigera CRDs to be established..."
+kubectl wait --for=condition=Established \
+  crd/installations.operator.tigera.io crd/apiservers.operator.tigera.io \
+  --timeout=60s
+
 kubectl apply -f - <<EOF
 apiVersion: operator.tigera.io/v1
 kind: Installation

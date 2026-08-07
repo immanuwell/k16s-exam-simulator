@@ -41,7 +41,10 @@ fi
 
 if [[ -n "${REMOTE_HOST}" ]]; then
   SSH_OPTS=(-o StrictHostKeyChecking=no -o ConnectTimeout=10)
-  [[ -n "${SSH_KEY}" ]] && SSH_OPTS+=(-i "${SSH_KEY}")
+  # IdentitiesOnly matters here: without it, an agent loaded with other keys
+  # gets tried first and can exhaust the server's MaxAuthTries before this
+  # key is ever offered — --key would silently never be used.
+  [[ -n "${SSH_KEY}" ]] && SSH_OPTS+=(-i "${SSH_KEY}" -o IdentitiesOnly=yes)
 
   echo "→ Uploading K16S to ${SSH_USER}@${REMOTE_HOST}:/opt/k16s ..."
   ssh "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" "mkdir -p /opt/k16s"

@@ -9,6 +9,13 @@
 # it untouched.
 set -uo pipefail
 source "$(dirname "$0")/lib.sh"
+# lib.sh sets its own `set -euo pipefail` (correct for every other
+# provision/*.sh, which are fail-fast installers) — sourcing it re-enables
+# -e here too, silently undoing the line above. Caught live: teardown died
+# on the very first best-effort command that legitimately failed (`incus
+# network delete` while the default profile still referenced it) instead of
+# logging it and moving on to the next section like every other step here.
+set +e
 
 [[ "${EUID}" -eq 0 ]] || { echo "Run as root or with sudo" >&2; exit 1; }
 
@@ -141,11 +148,18 @@ if cmd_exists incus; then
   # the 10.10.0.0/24 default, in case K16S_INCUS_BRIDGE was customized.
   BRIDGE_PREFIX=$(incus network get incusbr0 ipv4.address 2>/dev/null | cut -d. -f1-3)
 
+  # `-c n` restricts the CSV to just the name column — a container with more
+  # than one network interface (every worker here has both eth0 and Calico's
+  # vxlan.calico) makes incus emit a quoted, multi-line CSV field for IPV4,
+  # and a naive `cut -d, -f1` over physical lines misreads that continuation
+  # line as a second, bogus container name. Caught live: it tried to delete
+  # a container literally named '10.10.0.11 (eth0)"'. Restricting the columns
+  # up front sidesteps the multi-line-field problem entirely.
   while IFS= read -r NAME; do
     [[ -z "${NAME}" ]] && continue
     run incus delete "${NAME}" --force
     log_ok "Deleted container ${NAME}"
-  done < <(incus list --format csv 2>/dev/null | cut -d, -f1)
+  done < <(incus list --format csv -c n 2>/dev/null)
 
   if [[ -n "${BRIDGE_PREFIX:-}" ]]; then
     run sed -i "/^${BRIDGE_PREFIX//./\\.}\\.[0-9]*  node[0-9]*\$/d" /etc/hosts
@@ -158,6 +172,14 @@ fi
 
 log_step "Incus"
 if cmd_exists incus; then
+  # incus-init.sh wires the `default` profile's eth0/root devices straight
+  # to incusbr0/the default storage pool. Deleting every container doesn't
+  # remove that profile-level reference, and incus refuses to delete a
+  # network or pool that's still "in use" by it — confirmed live: this
+  # failed with "Error: The network is currently in use" until the profile
+  # devices were detached first.
+  run incus profile device remove default eth0
+  run incus profile device remove default root
   run incus network delete incusbr0
   run incus storage delete default
 fi
@@ -181,17 +203,24 @@ if cmd_exists kubeadm; then
   log_ok "kubeadm reset"
 fi
 # Safety net for what `kubeadm reset` documents that it does NOT clean up
-# on its own: iptables rules and CNI-created network interfaces.
+# on its own: iptables rules and CNI-created network interfaces. Confirmed
+# live: kubeadm reset couldn't even reach Calico's own CNI delete hook (the
+# API server was already down by then), so it left every per-pod Calico veth
+# behind, not just the vxlan.calico overlay interface.
 run iptables -F
 run iptables -t nat -F
 run iptables -t mangle -F
 run iptables -X
-# Calico's VXLAN interface — routinely absent by this point (kubeadm reset
-# often already took it down), so failure here is the expected common case.
-[[ "${DRY_RUN}" == "true" ]] \
-  && echo -e "  ${DIM}[dry-run] ip link delete vxlan.calico${RST}" \
-  || ip link delete vxlan.calico 2>/dev/null
-run rm -rf /etc/cni/net.d /root/.kube
+for iface in $(ip -br link show 2>/dev/null | awk '{print $1}' | grep -E '^(vxlan\.calico|cali)'); do
+  iface="${iface%%@*}"  # `ip -br` prints veths as "caliXXXX@if2" — strip the peer suffix
+  [[ "${DRY_RUN}" == "true" ]] \
+    && echo -e "  ${DIM}[dry-run] ip link delete ${iface}${RST}" \
+    || ip link delete "${iface}" 2>/dev/null
+done
+# kubeadm reset empties these but leaves the directory trees themselves
+# (confirmed live — `/etc/kubernetes/pki`, `/var/lib/etcd`, and `/etc/cni`
+# all survived reset + the kubelet/incus package purges intact but empty).
+run rm -rf /etc/cni /etc/kubernetes /var/lib/etcd /root/.kube
 
 # ── 10. kubeadm/kubelet/kubectl packages ─────────────────────────────────
 
@@ -214,13 +243,23 @@ run rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg
 run rm -rf /var/lib/containerd /etc/containerd
 log_ok "containerd purged"
 
-# ── 12. Kernel config ─────────────────────────────────────────────────────
+# ── 12. Orphaned dependencies ─────────────────────────────────────────────
+# Every `apt purge` above only removes the packages named explicitly — it
+# doesn't touch what apt pulled in as *their* dependencies (confirmed live:
+# python3-novnc, kubernetes-cni, dnsmasq-base and dozens of desktop/graphics
+# libraries were still sitting there, installed, after every purge step above
+# had already run). One autoremove at the end sweeps all of it in one pass.
+log_step "Orphaned dependencies"
+run apt-get autoremove --purge -y
+log_ok "Orphaned packages removed"
+
+# ── 13. Kernel config ─────────────────────────────────────────────────────
 
 log_step "Kernel config"
 run rm -f /etc/modules-load.d/k16s-k8s.conf /etc/sysctl.d/99-k16s-k8s.conf
 log_info "overlay/br_netfilter kernel modules left loaded (harmless; won't reload after next reboot)"
 
-# ── 13. Restore host state preflight.sh changed ──────────────────────────
+# ── 14. Restore host state preflight.sh changed ──────────────────────────
 
 log_step "Restoring host state"
 if [[ -f /var/lib/k16s/original-hostname ]]; then
@@ -244,7 +283,7 @@ else
   log_info "Skipping swap restore — none was enabled before K16S ran"
 fi
 
-# ── 14. K16S's own state — last, since earlier steps read it ─────────────
+# ── 15. K16S's own state — last, since earlier steps read it ─────────────
 
 log_step "K16S state directories"
 run rm -f /var/log/k16s-node*.log /var/log/kubeadm-init.log /var/log/k16s-incus-prefetch.log
