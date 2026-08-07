@@ -16,6 +16,7 @@ func main() {
 	port := envOr("K16S_PORT", "8080")
 	dbPath := envOr("K16S_DB", "/var/lib/k16s/k16s.db")
 	examDir := envOr("K16S_EXAM_DIR", "/var/lib/k16s/exams")
+	mode := envOr("K16S_MODE", "heavy")
 
 	db := mustOpenDB(dbPath)
 	defer db.Close()
@@ -28,13 +29,13 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /api/status", handleStatus(db, questions))
+	mux.HandleFunc("GET /api/status", handleStatus(db, questions, mode))
 	mux.HandleFunc("GET /api/session", handleGetSession(db))
 	mux.HandleFunc("POST /api/session/start", handleStartSession(db, questions))
 	mux.HandleFunc("POST /api/session/end", handleEndSession(db))
 	mux.HandleFunc("GET /api/questions", handleListQuestions(questions))
-	mux.HandleFunc("POST /api/questions/{id}/check", handleCheck(db, questions, examDir))
-	mux.HandleFunc("POST /api/questions/{id}/setup", handleSetup(db, examDir))
+	mux.HandleFunc("POST /api/questions/{id}/check", handleCheck(db, questions, examDir, mode))
+	mux.HandleFunc("POST /api/questions/{id}/setup", handleSetup(db, examDir, questions, mode))
 
 	sub, err := fs.Sub(frontendFiles, "frontend/build")
 	if err != nil {

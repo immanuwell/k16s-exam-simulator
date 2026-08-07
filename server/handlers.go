@@ -25,8 +25,19 @@ func writeError(w http.ResponseWriter, code int, msg string) {
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
+// unavailableReason explains why a question can't run under the given mode,
+// or "" if it's fine. Only one case exists today (AppArmor needing kernel
+// securityfs that Docker containers don't expose), but the shape leaves
+// room for other requires values without changing callers.
+func unavailableReason(q *Question, mode string) string {
+	if mode != "lightweight" || q.Requires != "heavy" {
+		return ""
+	}
+	return "This task needs the full VM-based install (kubeadm + Incus or Lima) — its environment can't be created under the lightweight (kind) mode."
+}
+
 // GET /api/status
-func handleStatus(db *sql.DB, questions map[string][]Question) http.HandlerFunc {
+func handleStatus(db *sql.DB, questions map[string][]Question, mode string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		session, _ := getActiveSession(db)
 		profiles := make([]string, 0, len(questions))
@@ -37,6 +48,7 @@ func handleStatus(db *sql.DB, questions map[string][]Question) http.HandlerFunc 
 			"ok":       true,
 			"session":  session,
 			"profiles": profiles,
+			"mode":     mode,
 		})
 	}
 }
@@ -132,7 +144,7 @@ func handleListQuestions(questions map[string][]Question) http.HandlerFunc {
 }
 
 // POST /api/questions/{id}/check
-func handleCheck(db *sql.DB, questions map[string][]Question, examDir string) http.HandlerFunc {
+func handleCheck(db *sql.DB, questions map[string][]Question, examDir string, mode string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 
@@ -141,8 +153,13 @@ func handleCheck(db *sql.DB, questions map[string][]Question, examDir string) ht
 			writeError(w, 400, "no active session")
 			return
 		}
-		if findQuestion(questions[session.Profile], id) == nil {
+		q := findQuestion(questions[session.Profile], id)
+		if q == nil {
 			writeError(w, 404, "question not found: "+id)
+			return
+		}
+		if reason := unavailableReason(q, mode); reason != "" {
+			writeJSON(w, map[string]any{"unavailable": true, "reason": reason})
 			return
 		}
 
@@ -176,7 +193,7 @@ func handleCheck(db *sql.DB, questions map[string][]Question, examDir string) ht
 }
 
 // POST /api/questions/{id}/setup
-func handleSetup(db *sql.DB, examDir string) http.HandlerFunc {
+func handleSetup(db *sql.DB, examDir string, questions map[string][]Question, mode string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 
@@ -184,6 +201,12 @@ func handleSetup(db *sql.DB, examDir string) http.HandlerFunc {
 		if err != nil || session == nil {
 			writeError(w, 400, "no active session")
 			return
+		}
+		if q := findQuestion(questions[session.Profile], id); q != nil {
+			if reason := unavailableReason(q, mode); reason != "" {
+				writeJSON(w, map[string]any{"unavailable": true, "reason": reason})
+				return
+			}
 		}
 
 		script := filepath.Join(examDir, session.Profile, "scripts", id, "setup.sh")

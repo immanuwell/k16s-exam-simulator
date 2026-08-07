@@ -1,4 +1,5 @@
 id: 08-hardened-pod
+requires: heavy
 title: Create a Pod Hardened with AppArmor and Seccomp
 weight: 5
 context: controlplane

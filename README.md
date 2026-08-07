@@ -73,6 +73,12 @@ Topics across the three mocks: NetworkPolicy (ingress, egress, ipBlock, namespac
 - [Lima](https://lima-vm.io) (`brew install lima` on macOS, `apt install lima` or a release binary on Linux)
 - Windows isn't supported natively yet — WSL2 users can follow the Linux path, but it's unverified
 
+**Lightweight mode:**
+- Docker (or a Docker-compatible engine) already running
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) and `kubectl`, both single static binaries
+- ~2GB RAM free is comfortable — measured ~1.6GB for a 2-node cluster with Calico installed, before the exam server itself
+- No hypervisor, no VM, nothing written to your host OS outside Docker's own storage
+
 ---
 
 ## Quick Start
@@ -103,7 +109,21 @@ local/k16s-local destroy   # delete the VM entirely
 
 See [`local/lima.yaml`](local/lima.yaml) for the VM template and [`local/k16s-local`](local/k16s-local) for the full command reference.
 
-### Option B — on a VPS or VM
+### Option B — lightweight, no VM at all (Docker + kind)
+
+```bash
+git clone https://github.com/immanuwell/k16s-exam-simulator.git
+cd k16s-exam-simulator
+bash install.sh --lightweight
+```
+
+For genuinely low-resource machines — this runs entirely inside Docker via [kind](https://kind.sigs.k8s.io) (Kubernetes-in-Docker), with no VM and nothing written to your host OS. It's still a **real kubeadm cluster**, not an approximation of one: kind runs kubeadm internally, so the static pod manifests, etcd, and systemd-managed kubelet/containerd are structurally identical to the other two modes, and Calico replaces kind's default CNI so NetworkPolicy questions are enforced exactly the same way too.
+
+The trade-off is explicit, not silent: **AppArmor doesn't work under Docker** (it doesn't expose kernel securityfs to containers), so the 8 AppArmor questions across the CKS mocks are unavailable in this mode — the exam UI shows them struck through with the reason on hover, excludes them from scoring so 100% is still reachable, and blocks `Setup Env`/`Check Answer` on them with a clear message rather than letting you attempt something that can't work. Every other question — NetworkPolicy, seccomp, static pods, etcd backup, cert checks, PKI, CIS/kube-bench, and all the generic RBAC/Services/Jobs/HPA/Ingress-style questions — works identically to the other two modes.
+
+Manage it with `lightweight/k16s-lite`, which mirrors `local/k16s-local`'s command set (`up/stop/start/status/ssh/logs/open/reset/destroy`) — `destroy` is a single `kind delete cluster`, so teardown is complete by construction, same as laptop mode's VM deletion.
+
+### Option C — on a VPS or VM
 
 ```bash
 git clone https://github.com/immanuwell/k16s-exam-simulator.git
@@ -160,6 +180,8 @@ Host VM  (Debian 13, kubeadm controlplane)
 
 **Laptop mode** is the identical stack above, just relocated: instead of a cloud VPS, the "Host VM" is a local [Lima](https://lima-vm.io) VM (Ubuntu 24.04) managed by `local/k16s-local`, with nginx's port 80 forwarded to `localhost:8080` on your machine. Nothing about the controlplane/worker split, kubeadm, or Incus changes — it's the same real cluster, just running on your hardware instead of rented hardware.
 
+**Lightweight mode** swaps the VM and Incus for [kind](https://kind.sigs.k8s.io) — the "Host VM" becomes the kind control-plane container, and `node01`/`node02` become kind worker containers instead of Incus LXC containers, managed by `lightweight/k16s-lite`. kubeadm, static pods, etcd, and Calico are unchanged; only the container isolation technology underneath the "VM" and "workers" boxes in the diagram differs. This is also the one place the fidelity isn't 100%: AppArmor questions are unavailable, since Docker doesn't expose kernel securityfs to containers — see [Option B](#option-b--lightweight-no-vm-at-all-docker--kind) above.
+
 ---
 
 ## Adding Custom Questions
@@ -180,17 +202,18 @@ After adding files, re-run `bash install.sh --host <ip>` to sync and restart the
 
 ## Uninstalling
 
-`uninstall.sh` mirrors `install.sh`'s three modes and removes everything: the kubeadm cluster, all Incus worker containers, every package K16S installed, the candidate user, and `/var/lib/k16s` + `/etc/k16s`. If K16S changed this host's hostname or disabled its swap, both are restored to what they were before.
+`uninstall.sh` mirrors `install.sh`'s modes and removes everything: the kubeadm cluster, all Incus worker containers, every package K16S installed, the candidate user, and `/var/lib/k16s` + `/etc/k16s`. If K16S changed this host's hostname or disabled its swap, both are restored to what they were before.
 
 ```bash
 bash uninstall.sh                        # on the VM directly — asks for confirmation
 bash uninstall.sh --yes                  # skip the confirmation prompt
 bash uninstall.sh --host <your-vm-ip>    # remote, same as install.sh --host
 bash uninstall.sh --laptop               # deletes the whole Lima VM — nothing else to clean up
-bash uninstall.sh --dry-run              # print what would be removed without touching anything
+bash uninstall.sh --lightweight          # deletes the whole kind cluster — same story
+bash uninstall.sh --dry-run              # print what would be removed without touching anything (VPS/host mode only)
 ```
 
-Laptop mode is already a clean teardown by construction — deleting the Lima VM's disk deletes everything K16S ever touched, so `--laptop` just deletes the VM. For VPS/host mode, teardown only removes tools it can prove it installed (etcdctl/helm/Go/Node.js are left alone if they were already on the machine before K16S ran) — see `provision/teardown.sh` for the full reversal, one section per `provision/*.sh` step it undoes.
+Laptop and lightweight mode are already a clean teardown by construction — deleting the Lima VM's disk or the kind cluster deletes everything K16S ever touched, so `--laptop`/`--lightweight` just delete it. For VPS/host mode, teardown only removes tools it can prove it installed (etcdctl/helm/Go/Node.js are left alone if they were already on the machine before K16S ran) — see `provision/teardown.sh` for the full reversal, one section per `provision/*.sh` step it undoes.
 
 ---
 

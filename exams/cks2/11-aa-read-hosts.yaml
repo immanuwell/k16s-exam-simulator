@@ -1,4 +1,5 @@
 id: 11-aa-read-hosts
+requires: heavy
 title: Create an AppArmor Profile Restricting /proc/sys Writes
 weight: 5
 context: controlplane

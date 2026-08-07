@@ -1,24 +1,30 @@
 #!/usr/bin/env bash
-# K16S — Uninstaller. Mirrors install.sh's three modes.
+# K16S — Uninstaller. Mirrors install.sh's modes.
 # Usage:
 #   On the VM directly:  bash uninstall.sh [--yes] [--dry-run]
 #   Targeting a remote:  bash uninstall.sh --host 1.2.3.4 [--key ~/.ssh/id_ed25519] [--yes] [--dry-run]
 #   On your laptop:      bash uninstall.sh --laptop [--yes]
+#   Lightweight (kind):  bash uninstall.sh --lightweight [--yes]
 set -euo pipefail
 
 REMOTE_HOST=""
 SSH_KEY=""
 SSH_USER="root"
 LAPTOP="false"
-TEARDOWN_ARGS=()
+LIGHTWEIGHT="false"
+TEARDOWN_ARGS=()   # bare-host teardown.sh — supports --yes and --dry-run
+DESTROY_ARGS=()    # k16s-local/k16s-lite destroy — --yes only, no dry-run:
+                    # deleting a VM/kind cluster is already one atomic,
+                    # unambiguous action with nothing partial to preview.
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --host)     REMOTE_HOST="$2"; shift 2 ;;
-    --key)      SSH_KEY="$2";     shift 2 ;;
-    --user)     SSH_USER="$2";    shift 2 ;;
-    --laptop)   LAPTOP="true";    shift ;;
-    --yes|-y)   TEARDOWN_ARGS+=("--yes");     shift ;;
+    --host)        REMOTE_HOST="$2"; shift 2 ;;
+    --key)         SSH_KEY="$2";     shift 2 ;;
+    --user)        SSH_USER="$2";    shift 2 ;;
+    --laptop)      LAPTOP="true";    shift ;;
+    --lightweight) LIGHTWEIGHT="true"; shift ;;
+    --yes|-y)   TEARDOWN_ARGS+=("--yes"); DESTROY_ARGS+=("--yes"); shift ;;
     --dry-run)  TEARDOWN_ARGS+=("--dry-run"); shift ;;
     *) echo "Unknown option: $1"; exit 1 ;;
   esac
@@ -26,9 +32,18 @@ done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+if [[ "${LAPTOP}" == "true" && "${LIGHTWEIGHT}" == "true" ]]; then
+  echo "ERROR: --laptop and --lightweight are mutually exclusive"; exit 1
+fi
+
 if [[ "${LAPTOP}" == "true" ]]; then
   [[ -n "${REMOTE_HOST}" ]] && { echo "ERROR: --laptop and --host are mutually exclusive"; exit 1; }
-  exec "${SCRIPT_DIR}/local/k16s-local" destroy "${TEARDOWN_ARGS[@]:-}"
+  exec "${SCRIPT_DIR}/local/k16s-local" destroy "${DESTROY_ARGS[@]}"
+fi
+
+if [[ "${LIGHTWEIGHT}" == "true" ]]; then
+  [[ -n "${REMOTE_HOST}" ]] && { echo "ERROR: --lightweight and --host are mutually exclusive"; exit 1; }
+  exec "${SCRIPT_DIR}/lightweight/k16s-lite" destroy "${DESTROY_ARGS[@]}"
 fi
 
 if [[ -n "${REMOTE_HOST}" ]]; then
@@ -61,4 +76,4 @@ fi
   exit 1
 }
 
-bash "${SCRIPT_DIR}/provision/teardown.sh" "${TEARDOWN_ARGS[@]:-}"
+bash "${SCRIPT_DIR}/provision/teardown.sh" "${TEARDOWN_ARGS[@]}"

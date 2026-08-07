@@ -124,6 +124,7 @@ WorkingDirectory=/var/lib/k16s
 Environment=K16S_PORT=8080
 Environment=K16S_DB=/var/lib/k16s/k16s.db
 Environment=K16S_EXAM_DIR=/var/lib/k16s/exams
+Environment=K16S_MODE=${K16S_MODE:-heavy}
 Environment=KUBECONFIG=/etc/kubernetes/admin.conf
 ExecStart=${BINARY}
 Restart=on-failure

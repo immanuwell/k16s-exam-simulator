@@ -1,4 +1,5 @@
 id: 13-aa-migrate
+requires: heavy
 title: Replace a Legacy Pod with AppArmor Enforcement
 weight: 5
 context: controlplane

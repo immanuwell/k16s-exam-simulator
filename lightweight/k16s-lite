@@ -1,0 +1,473 @@
+#!/usr/bin/env bash
+# K16S lightweight mode — a real kubeadm cluster via kind (Kubernetes-in-Docker),
+# no VM, no host OS changes. See README.md's "Lightweight mode" section for
+# what this trades away (AppArmor questions) versus the VPS/laptop modes.
+#
+# Usage:
+#   lightweight/k16s-lite up      [--profile cka] [--workers 1] [--port 8080] [--k8s-image kindest/node:vX.Y.Z]
+#   lightweight/k16s-lite stop
+#   lightweight/k16s-lite start
+#   lightweight/k16s-lite restart
+#   lightweight/k16s-lite status
+#   lightweight/k16s-lite ssh      [--root]
+#   lightweight/k16s-lite logs     [server|kubelet|terminal]
+#   lightweight/k16s-lite open
+#   lightweight/k16s-lite reset    [--yes]
+#   lightweight/k16s-lite destroy  [--yes]
+set -euo pipefail
+
+if [[ -t 1 ]]; then
+  RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'
+  BLU='\033[0;34m'; CYN='\033[0;36m'; RST='\033[0m'
+else
+  RED=''; YEL=''; GRN=''; BLU=''; CYN=''; RST=''
+fi
+
+log_step() { echo -e "\n${BLU}▶${RST} ${1}"; }
+log_ok()   { echo -e "  ${GRN}✓${RST} ${1}"; }
+log_warn() { echo -e "  ${YEL}⚠${RST} ${1}"; }
+log_info() { echo -e "  ${CYN}·${RST} ${1}"; }
+die()      { echo -e "\n${RED}✗${RST} ${1}" >&2; exit 1; }
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CLUSTER="k16s-lite"
+CP="${CLUSTER}-control-plane"
+STATE_DIR="${HOME}/.k16s-lite"
+KUBECONFIG_FILE="${STATE_DIR}/kubeconfig"
+PORT_FILE="${STATE_DIR}/port"
+
+PROFILE="cka"
+WORKERS="1"
+HOST_PORT="8080"
+K8S_IMAGE=""   # empty = whatever node image this kind version defaults to
+ASSUME_YES="false"
+SSH_ROOT="false"
+
+# ── Preflight ────────────────────────────────────────────────────────────
+
+require_tools() {
+  command -v docker &>/dev/null \
+    || die "Docker is required for lightweight mode but isn't installed.\n\n  https://docs.docker.com/engine/install/\n\n  Then re-run this command."
+  docker info &>/dev/null \
+    || die "Docker is installed but not usable — is the daemon running, and are you in the 'docker' group (or using sudo)?"
+  command -v kind &>/dev/null \
+    || die "kind is required for lightweight mode but isn't installed.\n\n  It's a single static binary:\n    https://kind.sigs.k8s.io/docs/user/quick-start/#installation\n\n  Then re-run this command."
+  command -v kubectl &>/dev/null \
+    || die "kubectl is required for lightweight mode but isn't installed.\n\n  https://kubernetes.io/docs/tasks/tools/#kubectl\n\n  Then re-run this command."
+}
+
+kc() { kubectl --kubeconfig "${KUBECONFIG_FILE}" "$@"; }
+
+# ── Cluster helpers ──────────────────────────────────────────────────────
+
+cluster_exists() { kind get clusters 2>/dev/null | grep -qx "${CLUSTER}"; }
+
+worker_docker_names() {
+  docker ps -a \
+    --filter "label=io.x-k8s.kind.cluster=${CLUSTER}" \
+    --filter "label=io.x-k8s.kind.role=worker" \
+    --format '{{.Names}}' | sort -V
+}
+
+container_ip() {
+  docker inspect "$1" --format '{{.NetworkSettings.Networks.kind.IPAddress}}'
+}
+
+save_port() { mkdir -p "${STATE_DIR}"; echo "$1" > "${PORT_FILE}"; }
+read_port()  { [[ -f "${PORT_FILE}" ]] && cat "${PORT_FILE}" || echo "8080"; }
+
+render_kind_config() {
+  local out; out="$(mktemp -t k16s-lite-kind.XXXXXX.yaml)"
+  {
+    echo "kind: Cluster"
+    echo "apiVersion: kind.x-k8s.io/v1alpha4"
+    echo "name: ${CLUSTER}"
+    echo "networking:"
+    # kindnet (the default CNI) doesn't enforce NetworkPolicy at all — Calico
+    # goes in instead, right after the cluster is up, same as every other
+    # K16S mode.
+    echo "  disableDefaultCNI: true"
+    echo "  podSubnet: \"10.244.0.0/16\""
+    echo "nodes:"
+    echo "  - role: control-plane"
+    [[ -n "${K8S_IMAGE}" ]] && echo "    image: ${K8S_IMAGE}"
+    echo "    extraPortMappings:"
+    echo "      - containerPort: 80"
+    echo "        hostPort: ${HOST_PORT}"
+    echo "        listenAddress: \"127.0.0.1\""
+    # The repo is mounted straight into the control-plane node so the exact
+    # same provision/*.sh scripts used by the VPS/laptop modes — cni.sh,
+    # metrics-server.sh, ttyd.sh, nginx.sh, k16s-server.sh — run here
+    # unmodified: REPO_ROOT resolves the same way regardless of how the
+    # repo got onto the machine (rsync for --host, a Lima mount for
+    # --laptop, this bind-mount for --lightweight).
+    echo "    extraMounts:"
+    echo "      - hostPath: ${REPO_ROOT}"
+    echo "        containerPath: /opt/k16s"
+    for _ in $(seq 1 "${WORKERS}"); do
+      echo "  - role: worker"
+      [[ -n "${K8S_IMAGE}" ]] && echo "    image: ${K8S_IMAGE}"
+    done
+  } > "${out}"
+  echo "${out}"
+}
+
+# ── Provisioning (host-side; only what's genuinely control-plane-local
+# runs inside the container — see lightweight/steps/candidate.sh) ────────
+
+provision_calico() {
+  log_step "Calico CNI"
+  local calico_version="v3.29.1"
+  kc apply --server-side --force-conflicts -f \
+    "https://raw.githubusercontent.com/projectcalico/calico/${calico_version}/manifests/tigera-operator.yaml" \
+    2>&1 | grep -v "^$" || true
+
+  # Same CRD-establishment race as provision/cni.sh: applying the CRD
+  # doesn't mean the API server has registered it yet.
+  log_info "Waiting for Tigera CRDs to be established..."
+  kc wait --for=condition=Established \
+    crd/installations.operator.tigera.io crd/apiservers.operator.tigera.io \
+    --timeout=60s
+
+  kc apply -f - <<EOF
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  calicoNetwork:
+    ipPools:
+    - name: default-ipv4-ippool
+      blockSize: 26
+      cidr: 10.244.0.0/16
+      encapsulation: VXLAN
+      natOutgoing: Enabled
+      nodeSelector: all()
+---
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}
+EOF
+
+  log_info "Waiting for nodes to become Ready (up to 3 min)..."
+  kc wait --for=condition=Ready nodes --all --timeout=180s
+  kc wait --for=condition=Available deploy/coredns -n kube-system --timeout=120s
+  log_ok "Calico CNI ready"
+}
+
+provision_metrics_server() {
+  log_step "metrics-server"
+  local version="v0.9.0"
+  kc apply -f "https://github.com/kubernetes-sigs/metrics-server/releases/download/${version}/components.yaml"
+
+  if ! kc get deploy metrics-server -n kube-system \
+      -o jsonpath='{.spec.template.spec.containers[0].args}' \
+      | grep -q -- "--kubelet-insecure-tls"; then
+    kc patch deployment metrics-server -n kube-system --type=json -p='[
+      {"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}
+    ]'
+  fi
+
+  kc wait --for=condition=Available deploy/metrics-server -n kube-system --timeout=120s \
+    || log_warn "metrics-server not Available yet — kubectl top may need another minute"
+  log_ok "metrics-server ready"
+}
+
+provision_node_ssh() {
+  log_step "SSH server on worker nodes"
+  # Same reasoning and same fix as provision/node-ssh.sh (PR #4): the kind
+  # node image ships the OpenSSH client only. Run from the host instead of
+  # incus exec, since that's what can reach worker containers here.
+  install_one() {
+    local name="$1"
+    if docker exec "${name}" test -x /usr/sbin/sshd 2>/dev/null; then
+      return 0
+    fi
+    docker exec "${name}" bash -c '
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update -q
+      apt-get install -y --no-install-recommends openssh-server
+    '
+    docker exec "${name}" bash -c '
+      KEYWORDS="PermitRootLogin|PubkeyAuthentication|PasswordAuthentication"
+      if grep -q "^Include /etc/ssh/sshd_config.d/" /etc/ssh/sshd_config; then
+        mkdir -p /etc/ssh/sshd_config.d
+        CONF=/etc/ssh/sshd_config.d/10-k16s.conf
+        : > "${CONF}"
+      else
+        sed -i -E "/^[[:space:]]*(${KEYWORDS})[[:space:]]/d" /etc/ssh/sshd_config
+        CONF=/etc/ssh/sshd_config
+      fi
+      cat >> "${CONF}" <<EOF
+PermitRootLogin prohibit-password
+PubkeyAuthentication yes
+PasswordAuthentication no
+EOF
+      systemctl enable ssh
+      systemctl restart ssh
+    '
+  }
+  wait_one() {
+    local name="$1"
+    for _ in $(seq 1 15); do
+      docker exec "${name}" ss -lnt 2>/dev/null | grep -q ':22 ' && return 0
+      sleep 1
+    done
+    die "sshd did not start on ${name} — check 'docker exec ${name} journalctl -u ssh'"
+  }
+
+  local names=() pids=()
+  while IFS= read -r n; do names+=("${n}"); done < <(worker_docker_names)
+  for n in "${names[@]}"; do
+    install_one "${n}" &
+    pids+=($!)
+  done
+  for p in "${pids[@]}"; do wait "${p}" || die "sshd install failed on a worker"; done
+  for n in "${names[@]}"; do wait_one "${n}"; log_ok "${n}: sshd listening on :22"; done
+}
+
+provision_candidate() {
+  log_step "Candidate user + SSH access to workers"
+  docker exec "${CP}" bash /opt/k16s/lightweight/steps/candidate.sh
+
+  local pubkey; pubkey=$(docker exec "${CP}" cat /home/candidate/.ssh/id_ed25519.pub)
+
+  local names=(); while IFS= read -r n; do names+=("${n}"); done < <(worker_docker_names)
+
+  local ssh_config
+  ssh_config=$(cat <<EOF
+Host controlplane
+  HostName 127.0.0.1
+  User root
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+
+EOF
+)
+  local i=1
+  for n in "${names[@]}"; do
+    docker exec "${n}" bash -c "
+      mkdir -p /root/.ssh
+      chmod 700 /root/.ssh
+      touch /root/.ssh/authorized_keys
+      grep -qxF '${pubkey}' /root/.ssh/authorized_keys || echo '${pubkey}' >> /root/.ssh/authorized_keys
+      chmod 600 /root/.ssh/authorized_keys
+    "
+    local ip; ip=$(container_ip "${n}")
+    local alias; alias=$(printf "node%02d" "${i}")
+    ssh_config+=$(cat <<EOF
+
+Host ${alias}
+  HostName ${ip}
+  User root
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+EOF
+)
+    i=$((i + 1))
+  done
+
+  printf '%s\n' "${ssh_config}" | docker exec -i "${CP}" bash -c \
+    'cat > /home/candidate/.ssh/config && chmod 600 /home/candidate/.ssh/config && chown candidate:candidate /home/candidate/.ssh/config'
+  log_ok "candidate can reach $(( i - 1 )) worker node(s) via ssh node01, node02, ..."
+}
+
+provision_services() {
+  log_step "ttyd / nginx / k16s-server"
+  docker exec "${CP}" bash /opt/k16s/provision/ttyd.sh
+  docker exec -e K16S_DESKTOP=false "${CP}" bash /opt/k16s/provision/nginx.sh
+  docker exec -e K16S_MODE=lightweight -e K16S_PROFILE="${PROFILE}" "${CP}" \
+    bash /opt/k16s/provision/k16s-server.sh
+
+  # Same as main.sh: profile-specific extras (e.g. cka.sh's etcdctl env vars
+  # for the candidate), if this profile has one.
+  if docker exec "${CP}" test -f "/opt/k16s/provision/profiles/${PROFILE}.sh"; then
+    docker exec "${CP}" bash "/opt/k16s/provision/profiles/${PROFILE}.sh"
+  fi
+
+  # k16s-server.sh builds the frontend (npm install/build) inside the mounted
+  # repo, as root, since it's running as root in the container — and unlike
+  # a plain host or a Lima VM's virtiofs mount, a Docker bind mount doesn't
+  # remap UIDs, so those files land on the *host* repo owned by root too.
+  # Confirmed live: it broke a normal `npm run build` on the host afterward
+  # with EACCES. Hand them back to whoever ran this command.
+  docker exec "${CP}" bash -c "
+    chown -R $(id -u):$(id -g) \
+      /opt/k16s/server/frontend/node_modules \
+      /opt/k16s/server/frontend/.svelte-kit \
+      /opt/k16s/server/frontend/build \
+      2>/dev/null || true
+  "
+}
+
+provision_all() {
+  provision_calico
+  provision_metrics_server
+  provision_node_ssh
+  provision_candidate
+  provision_services
+}
+
+print_urls() {
+  local port; port="$(read_port)"
+  echo ""
+  echo -e "  Exam UI:   ${CYN}http://localhost:${port}/${RST}"
+  echo -e "  Terminal:  ${CYN}http://localhost:${port}/terminal/${RST}"
+  local pass; pass=$(docker exec "${CP}" cat /etc/k16s/candidate-password 2>/dev/null || echo "")
+  [[ -n "${pass}" ]] && echo -e "  Candidate: ${YEL}${pass}${RST} (only needed for \`k16s-lite ssh\`; the exam UI doesn't ask for it)"
+  echo ""
+}
+
+# ── Subcommands ──────────────────────────────────────────────────────────
+
+cmd_up() {
+  require_tools
+
+  if cluster_exists; then
+    log_ok "k16s-lite cluster already exists"
+    kind export kubeconfig --name "${CLUSTER}" --kubeconfig "${KUBECONFIG_FILE}" &>/dev/null
+    # Re-running provisioning here is deliberate, not a missed early-return:
+    # if a previous `up` died partway through, this is what resumes it,
+    # exactly like re-running install.sh is always safe in the other two
+    # modes. Every step here is itself idempotent (kubectl apply, the `id
+    # candidate` / sshd-binary / grep -qxF checks, and the already_done
+    # markers inside the reused ttyd.sh/nginx.sh/k16s-server.sh) — confirmed
+    # live by resuming from a deliberately-interrupted run during testing.
+    provision_all
+    print_urls
+    return 0
+  fi
+
+  log_step "Creating kind cluster (${WORKERS} worker node(s))"
+  local cfg; cfg="$(render_kind_config)"
+  trap 'rm -f "${cfg}"' RETURN
+  kind create cluster --config "${cfg}"
+  mkdir -p "${STATE_DIR}"
+  kind export kubeconfig --name "${CLUSTER}" --kubeconfig "${KUBECONFIG_FILE}"
+  save_port "${HOST_PORT}"
+  log_ok "Cluster created"
+
+  provision_all
+  log_ok "K16S (lightweight) is ready"
+  print_urls
+}
+
+cmd_stop() {
+  cluster_exists || die "No k16s-lite cluster found — run 'k16s-lite up' first"
+  log_step "Stopping node containers"
+  local names=(); while IFS= read -r n; do names+=("${n}"); done < <(worker_docker_names)
+  docker stop "${CP}" "${names[@]}" &>/dev/null
+  log_ok "Stopped — resume with 'k16s-lite start'"
+}
+
+cmd_start() {
+  cluster_exists || die "No k16s-lite cluster found — run 'k16s-lite up' first"
+  log_step "Starting node containers"
+  local names=(); while IFS= read -r n; do names+=("${n}"); done < <(worker_docker_names)
+  docker start "${CP}" "${names[@]}" &>/dev/null
+  log_ok "Started"
+  print_urls
+}
+
+cmd_restart() { cmd_stop; cmd_start; }
+
+cmd_status() {
+  if ! cluster_exists; then
+    log_info "No k16s-lite cluster exists yet — run 'k16s-lite up'"
+    return 0
+  fi
+  docker ps -a --filter "label=io.x-k8s.kind.cluster=${CLUSTER}" \
+    --format 'table {{.Names}}\t{{.Status}}'
+  print_urls
+}
+
+cmd_ssh() {
+  cluster_exists || die "No k16s-lite cluster found — run 'k16s-lite up' first"
+  if [[ "${SSH_ROOT}" == "true" ]]; then
+    docker exec -it "${CP}" bash
+  else
+    docker exec -it -u candidate "${CP}" bash
+  fi
+}
+
+cmd_logs() {
+  cluster_exists || die "No k16s-lite cluster found — run 'k16s-lite up' first"
+  local unit="${1:-server}"
+  case "${unit}" in
+    server)   unit=k16s-server ;;
+    kubelet)  unit=kubelet ;;
+    terminal) unit=k16s-terminal ;;
+    *) die "Unknown log target '${unit}' — use one of: server, kubelet, terminal" ;;
+  esac
+  docker exec "${CP}" journalctl -u "${unit}" -f
+}
+
+cmd_open() {
+  cluster_exists || die "No k16s-lite cluster found — run 'k16s-lite up' first"
+  local url; url="http://localhost:$(read_port)/"
+  case "$(uname -s)" in
+    Darwin) open "${url}" ;;
+    Linux)  xdg-open "${url}" 2>/dev/null || log_info "Open manually: ${url}" ;;
+    *)      log_info "Open manually: ${url}" ;;
+  esac
+}
+
+confirm() {
+  [[ "${ASSUME_YES}" == "true" ]] && return 0
+  read -r -p "${1} [y/N] " reply
+  [[ "${reply}" =~ ^[Yy]$ ]]
+}
+
+cmd_reset() {
+  cluster_exists || die "No k16s-lite cluster found — run 'k16s-lite up' first"
+  confirm "This wipes the entire cluster and re-provisions from scratch. Continue?" \
+    || { log_info "Aborted"; return 0; }
+  kind delete cluster --name "${CLUSTER}"
+  cmd_up
+}
+
+cmd_destroy() {
+  cluster_exists || { log_info "No k16s-lite cluster exists"; return 0; }
+  confirm "This deletes the k16s-lite cluster and all its data permanently. Continue?" \
+    || { log_info "Aborted"; return 0; }
+  kind delete cluster --name "${CLUSTER}"
+  rm -rf "${STATE_DIR}"
+  log_ok "k16s-lite cluster deleted"
+}
+
+usage() { sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+
+# ── Argument parsing ─────────────────────────────────────────────────────
+
+SUBCOMMAND="${1:-}"
+[[ -n "${SUBCOMMAND}" ]] && shift || true
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --profile)   PROFILE="$2"; shift 2 ;;
+    --workers)   WORKERS="$2"; shift 2 ;;
+    --port)      HOST_PORT="$2"; shift 2 ;;
+    --k8s-image) K8S_IMAGE="$2"; shift 2 ;;
+    --yes|-y)    ASSUME_YES="true"; shift ;;
+    --root)      SSH_ROOT="true"; shift ;;
+    server|kubelet|terminal) LOG_TARGET="$1"; shift ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+case "${SUBCOMMAND}" in
+  up)       cmd_up ;;
+  stop)     cmd_stop ;;
+  start)    cmd_start ;;
+  restart)  cmd_restart ;;
+  status)   cmd_status ;;
+  ssh)      cmd_ssh ;;
+  logs)     cmd_logs "${LOG_TARGET:-server}" ;;
+  open)     cmd_open ;;
+  reset)    cmd_reset ;;
+  destroy)  cmd_destroy ;;
+  ""|help|-h|--help) usage ;;
+  *) die "Unknown subcommand: ${SUBCOMMAND}\n\nRun 'k16s-lite help' for usage." ;;
+esac

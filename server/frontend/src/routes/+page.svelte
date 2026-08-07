@@ -4,6 +4,7 @@
 
   // ── State ──────────────────────────────────────────────────────────────────
   let view       = $state('loading'); // loading | home | exam | results
+  let mode       = $state('heavy'); // heavy | lightweight — from /api/status
   let profile    = $state('cka');
   let duration   = $state(7200);
   let session    = $state(null);
@@ -30,10 +31,19 @@
   let currentQuestion = $derived(questions[currentIdx] ?? null);
   let progress        = $derived(session?.progress ?? {});
 
+  function unavailableInThisMode(q) {
+    return mode === 'lightweight' && q.requires === 'heavy';
+  }
+  let currentUnavailable = $derived(currentQuestion ? unavailableInThisMode(currentQuestion) : false);
+
+  // Questions that can't run in this mode are excluded from both sides of
+  // the score fraction — otherwise a lightweight-mode candidate could never
+  // reach 100% no matter how well they do on what's actually available.
+  let scorableQuestions = $derived(questions.filter(q => !unavailableInThisMode(q)));
   let score = $derived(
-    questions.reduce((acc, q) => progress[q.id]?.status === 'passed' ? acc + q.weight : acc, 0)
+    scorableQuestions.reduce((acc, q) => progress[q.id]?.status === 'passed' ? acc + q.weight : acc, 0)
   );
-  let totalPoints = $derived(questions.reduce((acc, q) => acc + q.weight, 0));
+  let totalPoints = $derived(scorableQuestions.reduce((acc, q) => acc + q.weight, 0));
 
   let ckaProfiles = $derived((profiles.length ? profiles : ['cka']).filter(p => p.startsWith('cka')));
   let cksProfiles = $derived((profiles.length ? profiles : ['cks']).filter(p => p.startsWith('cks')));
@@ -65,8 +75,9 @@
     return `${h}:${m}:${s}`;
   }
 
-  function statusClass(id) {
-    const s = progress[id]?.status;
+  function statusClass(q) {
+    if (unavailableInThisMode(q)) return 'bg-[#4a5169] text-slate-600 ring-[#6b7392] opacity-50 line-through decoration-slate-600';
+    const s = progress[q.id]?.status;
     if (s === 'passed')   return 'bg-green-700 text-green-100 ring-green-600';
     if (s === 'failed')   return 'bg-red-800   text-red-100   ring-red-700';
     if (s === 'attempted') return 'bg-amber-700 text-amber-100 ring-amber-600';
@@ -122,6 +133,7 @@
     try {
       const status = await api.get('/api/status');
       profiles = status.profiles ?? [];
+      mode = status.mode ?? 'heavy';
       if (status.session) {
         session = status.session;
         const data = await api.get('/api/questions?profile=' + session.profile);
@@ -161,12 +173,12 @@
   }
 
   async function checkAnswer() {
-    if (!currentQuestion || checking) return;
+    if (!currentQuestion || checking || currentUnavailable) return;
     checking = true;
     checkResult = null;
     try {
       const result = await api.post('/api/questions/' + currentQuestion.id + '/check', {});
-      checkResult = result;
+      checkResult = result.unavailable ? { unavailable: true, output: result.reason } : result;
       session = await api.get('/api/session');
     } catch (e) {
       checkResult = { passed: false, output: e.message };
@@ -176,12 +188,14 @@
   }
 
   async function setupEnv() {
-    if (!currentQuestion || setting_up) return;
+    if (!currentQuestion || setting_up || currentUnavailable) return;
     setting_up = true;
     checkResult = null;
     try {
       const result = await api.post('/api/questions/' + currentQuestion.id + '/setup', {});
-      checkResult = { passed: result.ok, output: result.output, isSetup: true };
+      checkResult = result.unavailable
+        ? { unavailable: true, output: result.reason, isSetup: true }
+        : { passed: result.ok, output: result.output, isSetup: true };
       session = await api.get('/api/session');
     } catch (e) {
       checkResult = { passed: false, output: e.message, isSetup: true };
@@ -312,9 +326,9 @@
         {#each questions as q, i}
           <button
             onclick={() => selectQuestion(i)}
-            class="w-7 h-7 rounded text-xs font-mono font-medium transition-all ring-1 {statusClass(q.id)}
+            class="w-7 h-7 rounded text-xs font-mono font-medium transition-all ring-1 {statusClass(q)}
                    {i === currentIdx ? 'ring-2 ring-white/50 scale-110' : 'ring-transparent'}"
-            title={q.title}
+            title={unavailableInThisMode(q) ? q.title + ' — unavailable in lightweight mode' : q.title}
           >{i + 1}</button>
         {/each}
       </div>
@@ -353,6 +367,16 @@
               </div>
             {/if}
 
+            {#if currentUnavailable}
+              <div class="rounded border border-amber-800 bg-amber-950/30 p-3">
+                <div class="text-xs font-semibold mb-1 text-amber-400">Unavailable in lightweight mode</div>
+                <p class="text-xs text-amber-200/80 leading-relaxed">
+                  This task's environment can't be created in this lightweight (kind) installation — it needs
+                  the full VM-based install (kubeadm + Incus or Lima). Switch install modes to attempt it.
+                </p>
+              </div>
+            {/if}
+
             <div class="text-sm text-slate-300 leading-relaxed space-y-1 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:my-0.5 [&_p]:my-1 [&_strong]:text-slate-200">
               {@html md(currentQuestion.description)}
             </div>
@@ -369,11 +393,17 @@
             {/if}
 
             {#if checkResult}
-              <div class="rounded border {checkResult.passed
-                ? 'border-green-800 bg-green-950/40'
-                : 'border-red-900 bg-red-950/30'} p-3">
-                <div class="text-xs font-semibold mb-1 {checkResult.passed ? 'text-green-400' : 'text-red-400'}">
-                  {#if checkResult.isSetup}
+              <div class="rounded border {checkResult.unavailable
+                ? 'border-amber-800 bg-amber-950/30'
+                : checkResult.passed
+                  ? 'border-green-800 bg-green-950/40'
+                  : 'border-red-900 bg-red-950/30'} p-3">
+                <div class="text-xs font-semibold mb-1 {checkResult.unavailable
+                  ? 'text-amber-400'
+                  : checkResult.passed ? 'text-green-400' : 'text-red-400'}">
+                  {#if checkResult.unavailable}
+                    Unavailable in this mode
+                  {:else if checkResult.isSetup}
                     {checkResult.passed ? 'Environment ready' : 'Setup failed'}
                   {:else}
                     {checkResult.passed ? 'PASSED' : 'FAILED'}
@@ -390,12 +420,12 @@
           <div class="flex-none border-t border-[#5a6280] p-3 flex gap-2">
             <button
               onclick={setupEnv}
-              disabled={setting_up}
+              disabled={setting_up || currentUnavailable}
               class="flex-1 py-1.5 text-xs rounded border border-[#5a6280] text-slate-400 hover:text-slate-200 hover:border-slate-500 transition-colors disabled:opacity-50"
             >{setting_up ? 'Setting up…' : 'Setup Env'}</button>
             <button
               onclick={checkAnswer}
-              disabled={checking}
+              disabled={checking || currentUnavailable}
               class="flex-1 py-1.5 text-xs rounded bg-[#3b82f6] hover:bg-[#2563eb] text-white font-medium transition-colors disabled:opacity-50"
             >{checking ? 'Checking…' : 'Check Answer'}</button>
           </div>
@@ -471,22 +501,27 @@
     <div class="w-full max-w-lg space-y-2">
       {#each questions as q, i}
         {@const p = progress[q.id]}
-        <div class="flex items-start gap-3 bg-[#3b4256] border border-[#5a6280] rounded p-3">
+        {@const unavailable = unavailableInThisMode(q)}
+        <div class="flex items-start gap-3 bg-[#3b4256] border border-[#5a6280] rounded p-3 {unavailable ? 'opacity-60' : ''}">
           <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-mono shrink-0 mt-0.5
-            {p?.status === 'passed' ? 'bg-green-700 text-green-100' :
+            {unavailable ? 'bg-[#4a5169] text-slate-600' :
+             p?.status === 'passed' ? 'bg-green-700 text-green-100' :
              p?.status === 'failed' ? 'bg-red-800 text-red-100' :
              'bg-[#4a5169] text-slate-400'}"
           >{i + 1}</div>
           <div class="flex-1 min-w-0">
             <div class="text-sm text-slate-300">{q.title}</div>
-            <div class="text-xs text-slate-500 mt-0.5">{q.weight} pt{q.weight !== 1 ? 's' : ''}</div>
+            <div class="text-xs text-slate-500 mt-0.5">
+              {unavailable ? 'Unavailable in lightweight mode — excluded from scoring' : `${q.weight} pt${q.weight !== 1 ? 's' : ''}`}
+            </div>
           </div>
           <div class="text-xs font-medium shrink-0 mt-0.5
-            {p?.status === 'passed' ? 'text-green-400' :
+            {unavailable ? 'text-slate-600' :
+             p?.status === 'passed' ? 'text-green-400' :
              p?.status === 'failed' ? 'text-red-400' :
              'text-slate-500'}"
           >
-            {p?.status === 'passed' ? '+'+q.weight : p?.status === 'failed' ? '0' : '—'}
+            {unavailable ? 'N/A' : p?.status === 'passed' ? '+'+q.weight : p?.status === 'failed' ? '0' : '—'}
           </div>
         </div>
       {/each}

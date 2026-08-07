@@ -1,4 +1,5 @@
 id: 07-aa-custom-profile
+requires: heavy
 title: Create a Custom AppArmor Profile for /tmp Writes
 weight: 7
 context: controlplane

@@ -16,6 +16,11 @@ type Question struct {
 	Context     string `yaml:"context"      json:"context"`
 	Description string `yaml:"description"  json:"description"`
 	Hint        string `yaml:"hint"         json:"hint"`
+	// Empty means compatible with every install mode. "heavy" marks a
+	// question whose environment needs the full VM-based install (e.g.
+	// AppArmor, which needs kernel securityfs that Docker containers don't
+	// expose) and can't be set up under the lightweight (kind) mode.
+	Requires string `yaml:"requires,omitempty" json:"requires,omitempty"`
 }
 
 // loadAllQuestions reads *.yaml files from examDir/<profile>/ for each profile subdir.

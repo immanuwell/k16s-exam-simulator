@@ -1,4 +1,5 @@
 id: 14-aa-preloaded
+requires: heavy
 title: Apply a Preloaded AppArmor Profile via Pod Annotation
 weight: 4
 context: controlplane

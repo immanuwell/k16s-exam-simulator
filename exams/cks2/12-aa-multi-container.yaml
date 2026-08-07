@@ -1,4 +1,5 @@
 id: 12-aa-multi-container
+requires: heavy
 title: Apply Different AppArmor Profiles to Two Containers
 weight: 7
 context: controlplane

@@ -1,4 +1,5 @@
 id: 07-apparmor-deploy
+requires: heavy
 title: Apply an AppArmor Profile to a Deployment
 weight: 5
 context: controlplane

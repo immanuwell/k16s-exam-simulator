@@ -1,4 +1,5 @@
 id: 06-apparmor-load
+requires: heavy
 title: Load an AppArmor Profile and Apply It to a Pod
 weight: 6
 context: controlplane
