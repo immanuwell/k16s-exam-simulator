@@ -176,7 +176,7 @@ func handleCheck(db *sql.DB, questions map[string][]Question, examDir string) ht
 }
 
 // POST /api/questions/{id}/setup
-func handleSetup(db *sql.DB, examDir string) http.HandlerFunc {
+func handleSetup(db *sql.DB, questions map[string][]Question, examDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 
@@ -186,8 +186,17 @@ func handleSetup(db *sql.DB, examDir string) http.HandlerFunc {
 			return
 		}
 
+		question := findQuestion(questions[session.Profile], id)
+		if question == nil {
+			writeError(w, 404, "question not found: "+id)
+			return
+		}
+		workspaces := questionWorkspaces(*question, examDir, session.Profile)
+
 		script := filepath.Join(examDir, session.Profile, "scripts", id, "setup.sh")
 		if _, err := os.Stat(script); err != nil {
+			// No setup to run, but the answer directory still has to be writable.
+			ensureWorkspaces(workspaces)
 			writeJSON(w, map[string]any{"ok": true, "output": "No environment setup needed for this task."})
 			return
 		}
@@ -202,6 +211,10 @@ func handleSetup(db *sql.DB, examDir string) http.HandlerFunc {
 			writeJSON(w, map[string]any{"ok": false, "output": string(out)})
 			return
 		}
+
+		// setup.sh runs as root, so anything it just created under /opt — answer
+		// directories, seeded key material — belongs to root until handed over.
+		ensureWorkspaces(workspaces)
 
 		// Mark as attempted so the question nav shows it's been started.
 		if dbErr := upsertProgress(db, session.ID, id, "attempted", ""); dbErr != nil {
