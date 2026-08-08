@@ -67,6 +67,10 @@ if [[ -n "${REMOTE_HOST}" ]]; then
   echo "→ Running teardown on ${REMOTE_HOST} ..."
   ssh -t "${SSH_OPTS[@]}" "${SSH_USER}@${REMOTE_HOST}" \
     "bash /opt/k16s/provision/teardown.sh ${TEARDOWN_ARGS[*]:-}"
+
+  # Best-effort — a no-op if install.sh never opened one (private-IP target,
+  # or --no-tunnel was used).
+  "${SCRIPT_DIR}/k16s-tunnel" down "${REMOTE_HOST}" || true
   exit 0
 fi
 

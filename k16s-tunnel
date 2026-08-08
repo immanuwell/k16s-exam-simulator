@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# K16S SSH tunnel — keeps the exam UI reachable without exposing port 80 on a
+# public host. install.sh opens this automatically for public --host targets;
+# this script exists so reconnecting after a laptop sleep/dropped connection
+# doesn't mean re-deriving the ssh command by hand.
+#
+# Usage:
+#   k16s-tunnel up <host>     [--port 8080] [--key ~/.ssh/id] [--user root]
+#   k16s-tunnel down <host>
+#   k16s-tunnel status <host>
+set -euo pipefail
+
+if [[ -t 1 ]]; then
+  RED='\033[0;31m'; YEL='\033[0;33m'; GRN='\033[0;32m'
+  BLU='\033[0;34m'; CYN='\033[0;36m'; RST='\033[0m'
+else
+  RED=''; YEL=''; GRN=''; BLU=''; CYN=''; RST=''
+fi
+
+log_step() { echo -e "\n${BLU}▶${RST} ${1}"; }
+log_ok()   { echo -e "  ${GRN}✓${RST} ${1}"; }
+log_warn() { echo -e "  ${YEL}⚠${RST} ${1}"; }
+log_info() { echo -e "  ${CYN}·${RST} ${1}"; }
+die()      { echo -e "\n${RED}✗${RST} ${1}" >&2; exit 1; }
+
+STATE_DIR="${HOME}/.k16s/tunnels"
+PORT="8080"
+SSH_KEY=""
+SSH_USER="root"
+
+sanitize() { echo "$1" | tr -c 'A-Za-z0-9.-' '_'; }
+
+pid_file()  { echo "${STATE_DIR}/$(sanitize "$1").pid"; }
+port_file() { echo "${STATE_DIR}/$(sanitize "$1").port"; }
+log_file()  { echo "${STATE_DIR}/$(sanitize "$1").log"; }
+
+# True only if the pid is alive AND is actually the ssh process we started —
+# guards against a stale pid file matching some unrelated process that was
+# later assigned the same pid by the OS.
+tunnel_pid_alive() {
+  local host="$1" pid
+  [[ -f "$(pid_file "${host}")" ]] || return 1
+  pid=$(cat "$(pid_file "${host}")")
+  [[ -n "${pid}" ]] || return 1
+  kill -0 "${pid}" 2>/dev/null || return 1
+  ps -p "${pid}" -o command= 2>/dev/null | grep -q "ssh .*${host}"
+}
+
+cmd_up() {
+  local host="$1"
+  [[ -n "${host}" ]] || die "Usage: k16s-tunnel up <host> [--port N] [--key PATH] [--user NAME]"
+  mkdir -p "${STATE_DIR}"
+
+  if tunnel_pid_alive "${host}"; then
+    local existing_port; existing_port=$(cat "$(port_file "${host}")" 2>/dev/null || echo "${PORT}")
+    log_ok "Tunnel to ${host} already up"
+    echo -e "  ${CYN}http://localhost:${existing_port}/${RST}"
+    return 0
+  fi
+  rm -f "$(pid_file "${host}")" "$(port_file "${host}")"
+
+  log_step "Opening SSH tunnel to ${host}"
+  local ssh_opts=(-o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+    -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3)
+  # Same IdentitiesOnly reasoning as install.sh: without it, an agent loaded
+  # with other keys can exhaust the server's MaxAuthTries before this one is
+  # ever offered.
+  [[ -n "${SSH_KEY}" ]] && ssh_opts+=(-i "${SSH_KEY}" -o IdentitiesOnly=yes)
+
+  nohup ssh -N "${ssh_opts[@]}" -L "${PORT}:127.0.0.1:80" "${SSH_USER}@${host}" \
+    > "$(log_file "${host}")" 2>&1 &
+  local pid=$!
+
+  # ExitOnForwardFailure makes ssh exit immediately if the local port is
+  # already taken or the bind fails — give it a moment, then check it's
+  # actually still running rather than assuming success.
+  sleep 2
+  if ! kill -0 "${pid}" 2>/dev/null; then
+    die "Tunnel failed to start — see $(log_file "${host}")"
+  fi
+
+  echo "${pid}" > "$(pid_file "${host}")"
+  echo "${PORT}" > "$(port_file "${host}")"
+  log_ok "Tunnel established (pid ${pid})"
+  echo -e "  ${CYN}http://localhost:${PORT}/${RST}"
+}
+
+cmd_down() {
+  local host="$1"
+  [[ -n "${host}" ]] || die "Usage: k16s-tunnel down <host>"
+
+  if tunnel_pid_alive "${host}"; then
+    kill "$(cat "$(pid_file "${host}")")" 2>/dev/null || true
+    log_ok "Tunnel to ${host} closed"
+  else
+    log_info "No tunnel to ${host} was running"
+  fi
+  rm -f "$(pid_file "${host}")" "$(port_file "${host}")"
+}
+
+cmd_status() {
+  local host="$1"
+  [[ -n "${host}" ]] || die "Usage: k16s-tunnel status <host>"
+
+  if tunnel_pid_alive "${host}"; then
+    local p; p=$(cat "$(port_file "${host}")" 2>/dev/null || echo "?")
+    log_ok "Tunnel to ${host} is up (pid $(cat "$(pid_file "${host}")"))"
+    echo -e "  ${CYN}http://localhost:${p}/${RST}"
+  else
+    log_info "No tunnel to ${host} is running"
+  fi
+}
+
+usage() { sed -n '2,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+
+SUBCOMMAND="${1:-}"
+[[ -n "${SUBCOMMAND}" ]] && shift || true
+HOST="${1:-}"
+[[ -n "${HOST}" && "${HOST}" != --* ]] && shift || true
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --port) PORT="$2"; shift 2 ;;
+    --key)  SSH_KEY="$2"; shift 2 ;;
+    --user) SSH_USER="$2"; shift 2 ;;
+    *) die "Unknown option: $1" ;;
+  esac
+done
+
+case "${SUBCOMMAND}" in
+  up)     cmd_up "${HOST}" ;;
+  down)   cmd_down "${HOST}" ;;
+  status) cmd_status "${HOST}" ;;
+  ""|help|-h|--help) usage ;;
+  *) die "Unknown subcommand: ${SUBCOMMAND}\n\nRun 'k16s-tunnel help' for usage." ;;
+esac

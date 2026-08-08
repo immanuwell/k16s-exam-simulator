@@ -66,7 +66,7 @@ Topics across the three mocks: NetworkPolicy (ingress, egress, ipBlock, namespac
 - A VPS or VM running **Debian 13** (trixie) or **Ubuntu 22.04+**
 - Minimum: **4 vCPUs, 8 GB RAM, 30 GB disk**
 - Root SSH access
-- Open port **80** (the exam UI is served over plain HTTP on the LAN, not intended for public internet exposure)
+- Port **80** — only needs to be reachable from wherever you run `install.sh`. If the target IP is public, `install.sh` detects that automatically and never actually opens it to the internet at all — see [Quick Start, Option C](#option-c--on-a-vps-or-vm)
 
 **Laptop mode:**
 - macOS or Linux, **16 GB+ RAM** recommended (the VM takes 8 GB, leave headroom for everything else you run)
@@ -131,14 +131,24 @@ cd k16s-exam-simulator
 bash install.sh --host <your-vm-ip>
 ```
 
-That's it. The provisioner:
+The provisioner:
 1. Installs containerd, kubeadm, kubelet, kubectl on the host
 2. Runs `kubeadm init` and sets up Calico CNI
 3. Creates Incus LXC worker containers and joins them to the cluster
 4. Installs ttyd (web terminal) and nginx (reverse proxy)
 5. Deploys the K16S exam server with all question banks
 
-When done, open `http://<your-vm-ip>/` in a browser.
+**Where port 80 ends up depends on the target IP, detected automatically:**
+- **Private IP** (`10.x`, `172.16–31.x`, `192.168.x`, a VPC/LAN address) — nginx binds all interfaces exactly as before, and `install.sh` prints `http://<your-vm-ip>/` directly. Nothing to expose here in the first place.
+- **Public IP** (a real internet-facing VPS) — nginx binds `127.0.0.1` only, `install.sh` opens an SSH tunnel automatically, and it prints `http://localhost:8080/` instead. Port 80 is never reachable from the public internet at all, only from wherever you ran `install.sh`, over the SSH access you already needed anyway.
+
+Force either behavior with `--tunnel` / `--no-tunnel`; change the local port with `--port`. If your laptop sleeps or the connection drops, reconnect without re-running install:
+
+```bash
+./k16s-tunnel status <your-vm-ip>   # is it still up?
+./k16s-tunnel up <your-vm-ip>       # reconnect
+./k16s-tunnel down <your-vm-ip>     # close it
+```
 
 Re-running `install.sh` is safe, every step is idempotent.
 
@@ -213,7 +223,7 @@ bash uninstall.sh --lightweight          # deletes the whole kind cluster — sa
 bash uninstall.sh --dry-run              # print what would be removed without touching anything (VPS/host mode only)
 ```
 
-Laptop and lightweight mode are already a clean teardown by construction — deleting the Lima VM's disk or the kind cluster deletes everything K16S ever touched, so `--laptop`/`--lightweight` just delete it. For VPS/host mode, teardown only removes tools it can prove it installed (etcdctl/helm/Go/Node.js are left alone if they were already on the machine before K16S ran) — see `provision/teardown.sh` for the full reversal, one section per `provision/*.sh` step it undoes.
+Laptop and lightweight mode are already a clean teardown by construction — deleting the Lima VM's disk or the kind cluster deletes everything K16S ever touched, so `--laptop`/`--lightweight` just delete it. For VPS/host mode, teardown only removes tools it can prove it installed (etcdctl/helm/Go/Node.js are left alone if they were already on the machine before K16S ran) — see `provision/teardown.sh` for the full reversal, one section per `provision/*.sh` step it undoes. `--host` teardown also closes the SSH tunnel from `k16s-tunnel`, if `install.sh` had opened one — harmless no-op if it hadn't.
 
 ---
 

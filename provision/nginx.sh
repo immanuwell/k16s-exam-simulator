@@ -9,6 +9,17 @@ already_done "nginx" && { log_skip "nginx"; exit 0; }
 apt_install nginx
 
 DESKTOP_ENABLED="${K16S_DESKTOP:-true}"
+# Set by install.sh when the target IP is public — nginx then only accepts
+# connections from the machine itself, and the only way in is the SSH tunnel
+# install.sh opens automatically. Private/LAN targets are unaffected: those
+# already aren't reachable from the public internet, so there's nothing to
+# close off, and direct-IP access keeps working exactly as before.
+BIND_LOOPBACK="${K16S_BIND_LOOPBACK:-false}"
+if [[ "${BIND_LOOPBACK}" == "true" ]]; then
+  BIND_V4="127.0.0.1"; BIND_V6="::1"
+else
+  BIND_V4="0.0.0.0"; BIND_V6="::"
+fi
 
 cat > /etc/nginx/sites-available/k16s <<'NGINXCONF'
 map $http_upgrade $connection_upgrade {
@@ -17,8 +28,8 @@ map $http_upgrade $connection_upgrade {
 }
 
 server {
-  listen 80 default_server;
-  listen [::]:80 default_server;
+  listen __BIND_V4__:80 default_server;
+  listen [__BIND_V6__]:80 default_server;
   server_name _;
 
   location / {
@@ -70,6 +81,12 @@ fi
 cat >> /etc/nginx/sites-available/k16s <<'NGINXCONF'
 }
 NGINXCONF
+
+sed -i \
+  -e "s/__BIND_V4__/${BIND_V4}/" \
+  -e "s/__BIND_V6__/${BIND_V6}/" \
+  /etc/nginx/sites-available/k16s
+log_info "Bind address: ${BIND_V4} / [${BIND_V6}]"
 
 ln -sf /etc/nginx/sites-available/k16s /etc/nginx/sites-enabled/k16s
 rm -f /etc/nginx/sites-enabled/default
