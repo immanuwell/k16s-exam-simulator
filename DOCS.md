@@ -14,8 +14,6 @@ Full reference for installing, running, and extending K16S. For the quick pitch 
 - [Troubleshooting](#troubleshooting)
 - [Uninstalling](#uninstalling)
 
----
-
 ## Requirements
 
 ### VPS / VM mode (`--host`)
@@ -25,7 +23,7 @@ Full reference for installing, running, and extending K16S. For the quick pitch 
 | OS | Debian 13 (trixie) or Ubuntu 22.04+ |
 | Resources | 4 vCPUs, 8 GB RAM, 30 GB disk (minimum) |
 | Access | Root SSH access |
-| Network | Port 80 reachable from wherever you run `install.sh` — nothing needs to be open to the public internet, see [Public vs. private targets](#public-vs-private-targets) |
+| Network | Port 80 reachable from wherever you run `install.sh`, nothing needs to be open to the public internet, see [Public vs. private targets](#public-vs-private-targets) |
 
 ### Laptop mode (`--laptop`)
 
@@ -33,10 +31,10 @@ Full reference for installing, running, and extending K16S. For the quick pitch 
 |---|---|
 | OS | macOS or Linux |
 | Resources | 16 GB+ RAM recommended (the VM itself uses 8 GB) |
-| Tooling | [Lima](https://lima-vm.io) — `brew install lima` (macOS) or `apt install lima` / release binary (Linux) |
-| Windows | Not supported natively. WSL2 users can follow the Linux path — unverified |
+| Tooling | [Lima](https://lima-vm.io) - `brew install lima` (macOS) or `apt install lima` / release binary (Linux) |
+| Windows | Not supported natively. WSL2 users can follow the Linux path, unverified |
 
-Guest OS is Ubuntu 24.04 (not Debian 13) — chosen for Lima's more battle-tested cloud image support. This has no effect on exam content: the guest runs the exact same provisioner as VPS mode.
+Guest OS is Ubuntu 24.04 (not Debian 13) - chosen for Lima's more battle-tested cloud image support. This has no effect on exam content: the guest runs the exact same provisioner as VPS mode.
 
 ### Lightweight mode (`--lightweight`)
 
@@ -45,11 +43,9 @@ Guest OS is Ubuntu 24.04 (not Debian 13) — chosen for Lima's more battle-teste
 | Requirement | Docker (or a Docker-compatible engine), already running |
 | Tooling | [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) and `kubectl` |
 | Resources | ~2 GB RAM free (measured ~1.6 GB RSS for a 2-node cluster with Calico, before the exam server) |
-| Host impact | None — everything lives inside Docker's own storage |
+| Host impact | None, everything lives inside Docker's own storage |
 
-One capability gap: AppArmor doesn't work under Docker (it doesn't expose kernel securityfs to containers). 8 questions across the CKS mocks need it — see [Exam content](#exam-content).
-
----
+One capability gap: AppArmor doesn't work under Docker (it doesn't expose kernel securityfs to containers). 8 questions across the CKS mocks need it - see [Exam content](#exam-content).
 
 ## Installer reference
 
@@ -67,28 +63,28 @@ bash install.sh --lightweight [--profile cka] [--workers 1] [--k8s-image kindest
 | `--host <ip>` | Provision a remote VM over SSH instead of the local machine |
 | `--key <path>` | SSH private key for `--host` (default: your SSH agent / default key) |
 | `--user <name>` | SSH user for `--host` (default: `root`) |
-| `--laptop` | Provision inside a local Lima VM — see [Laptop mode](#laptop-mode-lima) |
-| `--lightweight` | Provision inside a kind cluster — see [Lightweight mode](#lightweight-mode-kind) |
-| `--profile <name>` | Env-setup profile to apply on the controlplane (only `cka` exists today — it exports etcdctl cert env vars for the candidate). Doesn't control which exams are available; the exam UI always loads every exam bundled in `exams/` |
+| `--laptop` | Provision inside a local Lima VM, see [Laptop mode](#laptop-mode-lima) |
+| `--lightweight` | Provision inside a kind cluster, see [Lightweight mode](#lightweight-mode-kind) |
+| `--profile <name>` | Env-setup profile to apply on the controlplane (only `cka` exists today, it exports etcdctl cert env vars for the candidate). Doesn't control which exams are available; the exam UI always loads every exam bundled in `exams/` |
 | `--k8s <version>` | Kubernetes minor version (`--host`/bare VM only) |
 | `--workers <n>` | Number of worker nodes (`--host`, `--lightweight`; laptop mode via its own flag below) |
 | `--no-desktop` | Skip the noVNC desktop step (`--host`/bare VM only) |
-| `--desktop` | Add the noVNC desktop (laptop mode only — off by default there) |
+| `--desktop` | Add the noVNC desktop (laptop mode only, off by default there) |
 | `--cpus / --memory / --disk` | VM sizing, laptop mode only |
 | `--tunnel` / `--no-tunnel` | Force or disable the SSH tunnel for `--host`, overriding auto-detection |
 | `--port <n>` | Local port for the tunnel (`--host`) or forwarded port (laptop/lightweight). Default `8080` |
 | `--k8s-image <image>` | kind node image, lightweight mode only |
 
-Re-running `install.sh` is always safe — every provisioning step is idempotent and skips work already done.
+Re-running `install.sh` is always safe - every provisioning step is idempotent and skips work already done.
 
 #### Public vs. private targets
 
 For `--host`, `install.sh` classifies the target IP automatically:
 
-- **Private** (`10.x`, `172.16–31.x`, `192.168.x`, loopback, link-local, CGNAT) — nginx binds all interfaces. `install.sh` prints `http://<ip>/` directly.
-- **Public** (a real internet-facing VPS), or unresolvable — nginx binds `127.0.0.1` only, and `install.sh` opens an SSH tunnel automatically. It prints `http://localhost:8080/` instead. Port 80 is never reachable from the public internet — only from wherever you ran `install.sh`, over the SSH access you already needed.
+- **Private** (`10.x`, `172.16-31.x`, `192.168.x`, loopback, link-local, CGNAT) - nginx binds all interfaces. `install.sh` prints `http://<ip>/` directly.
+- **Public** (a real internet-facing VPS), or unresolvable, nginx binds `127.0.0.1` only, and `install.sh` opens an SSH tunnel automatically. It prints `http://localhost:8080/` instead. Port 80 is never reachable from the public internet - only from wherever you ran `install.sh`, over the SSH access you already needed.
 
-An unresolvable hostname is treated as public — classification failure always fails toward privacy, never toward silently exposing port 80.
+An unresolvable hostname is treated as public - classification failure always fails toward privacy, never toward silently exposing port 80.
 
 ### `uninstall.sh`
 
@@ -116,9 +112,7 @@ Manages the SSH tunnel `install.sh` opens automatically for public `--host` targ
 ./k16s-tunnel status <host>
 ```
 
-State lives at `~/.k16s/tunnels/<host>.{pid,port,log}`. `up` is idempotent — running it against an already-open tunnel is a no-op.
-
----
+State lives at `~/.k16s/tunnels/<host>.{pid,port,log}`. `up` is idempotent, running it against an already-open tunnel is a no-op.
 
 ## Managing your environment
 
@@ -131,7 +125,7 @@ local/k16s-local <command>        # or: lightweight/k16s-lite <command>
 | Command | Effect |
 |---|---|
 | `up` | Create the VM/cluster and provision it. Flags: `--profile`, `--k8s`, `--workers`, `--desktop`/`--no-desktop`, `--cpus`, `--memory`, `--disk`, `--port` (laptop only, as applicable) |
-| `stop` | Suspend the VM/cluster — frees RAM/CPU, state preserved |
+| `stop` | Suspend the VM/cluster - frees RAM/CPU, state preserved |
 | `start` | Resume from `stop` |
 | `restart` | `stop` then `start` |
 | `status` | Current state, plus the exam UI and terminal URLs |
@@ -145,39 +139,37 @@ Laptop mode only:
 
 | Command | Effect |
 |---|---|
-| `snapshot` | Save a `clean` snapshot (qemu driver only — not supported on Lima's vz driver) |
+| `snapshot` | Save a `clean` snapshot (qemu driver only, not supported on Lima's vz driver) |
 | `revert` | Restore the `clean` snapshot. Add `--yes` to skip confirmation |
 
-`reset` destroys and recreates the whole VM/cluster rather than trying to reset kubeadm/Incus state in place — safer, since stale `/etc/kubernetes` or `/var/lib/kubelet` state is a known way to break a rejoin. `destroy` is a complete teardown by construction: deleting the Lima VM's disk, or running `kind delete cluster`, removes everything K16S ever touched.
+`reset` destroys and recreates the whole VM/cluster rather than trying to reset kubeadm/Incus state in place - safer, since stale `/etc/kubernetes` or `/var/lib/kubelet` state is a known way to break a rejoin. `destroy` is a complete teardown by construction: deleting the Lima VM's disk, or running `kind delete cluster`, removes everything K16S ever touched.
 
 See [`local/lima.yaml`](local/lima.yaml) for the VM template.
 
----
-
 ## Exam content
 
-Every exam bundled in `exams/` is loaded by the server at startup — pick which one to attempt from the exam UI, no install-time flag needed.
+Every exam bundled in `exams/` is loaded by the server at startup, pick which one to attempt from the exam UI, no install-time flag needed.
 
-### CKA — Certified Kubernetes Administrator
+### CKA - Certified Kubernetes Administrator
 
 Covers the [2026 CKA curriculum](https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/). Two mocks, 18 questions each.
 
-**CKA Mock 1** — core administration:
+**CKA Mock 1** - core administration:
 
 | # | Question |
 |---|---|
 | 1 | Fix a NotReady Worker Node |
 | 2 | Fix a CrashLoopBackOff Pod |
-| 3 | Fix a Pending Pod — Node Selector |
+| 3 | Fix a Pending Pod, Node Selector |
 | 4 | Fix the Broken kube-scheduler |
 | 5 | Identify Highest Resource-Consuming Pods |
 | 6 | Back Up and Verify etcd |
 | 7 | Drain a Node for Maintenance |
-| 8 | RBAC — ServiceAccount, Role, and RoleBinding |
+| 8 | RBAC, ServiceAccount, Role, and RoleBinding |
 | 9 | Check Cluster Certificate Expiration |
 | 10 | Create a Static Pod on a Worker Node |
-| 11 | NetworkPolicy — Restrict Pod-to-Pod Traffic |
-| 12 | Gateway API — Create a Gateway and HTTPRoute |
+| 11 | NetworkPolicy, Restrict Pod-to-Pod Traffic |
+| 12 | Gateway API, Create a Gateway and HTTPRoute |
 | 13 | Create a Path-Based Ingress |
 | 14 | Add a CoreDNS Stub Zone for an Internal Domain |
 | 15 | Configure HorizontalPodAutoscaler for a Deployment |
@@ -185,7 +177,7 @@ Covers the [2026 CKA curriculum](https://training.linuxfoundation.org/certificat
 | 17 | Pod with Sidecar Container and Shared Volume |
 | 18 | PersistentVolume, PVC, and Pod with Volume Mount |
 
-**CKA Mock 2** — advanced and 2026-updated topics:
+**CKA Mock 2** - advanced and 2026-updated topics:
 
 | # | Question |
 |---|---|
@@ -208,11 +200,11 @@ Covers the [2026 CKA curriculum](https://training.linuxfoundation.org/certificat
 | 17 | Recover a Released PersistentVolume |
 | 18 | Install a Helm Chart and Template Without CRDs |
 
-### CKS — Certified Kubernetes Security Specialist
+### CKS - Certified Kubernetes Security Specialist
 
 Covers the [2026 CKS curriculum](https://training.linuxfoundation.org/certification/certified-kubernetes-security-specialist-cks/). Three mocks, 18 (CKS 1: 15) questions each.
 
-Questions marked 🔒 need AppArmor and are unavailable in [lightweight mode](#lightweight-mode-kind) — excluded from scoring there, so 100% stays reachable.
+Questions marked 🔒 need AppArmor and are unavailable in [lightweight mode](#lightweight-mode-kind), excluded from scoring there, so 100% stays reachable.
 
 **CKS Mock 1:**
 
@@ -240,7 +232,7 @@ Questions marked 🔒 need AppArmor and are unavailable in [lightweight mode](#l
 |---|---|---|
 | 1 | Cross-Namespace Ingress for API Pods | |
 | 2 | Restrict Backend Egress to Database and DNS | |
-| 3 | Microsegmentation — Deny All Ingress, Selective Worker Egress | |
+| 3 | Microsegmentation, Deny All Ingress, Selective Worker Egress | |
 | 4 | Lock Down Proxy Pods with Ingress and Egress Allowlists | |
 | 5 | Ingress with matchExpressions Pod Selector | |
 | 6 | Lock Down Log Collector Ingress and Egress | |
@@ -257,7 +249,7 @@ Questions marked 🔒 need AppArmor and are unavailable in [lightweight mode](#l
 | 17 | Create a Self-Signed CA Certificate | |
 | 18 | Extract Validity Dates from a Base64-Encoded Certificate | |
 
-**CKS Mock 3** — CIS benchmark and kube-bench focus:
+**CKS Mock 3** - CIS benchmark and kube-bench focus:
 
 | # | Question | |
 |---|---|---|
@@ -280,30 +272,26 @@ Questions marked 🔒 need AppArmor and are unavailable in [lightweight mode](#l
 | 17 | Determine Whether a Certificate and Key Match | |
 | 18 | Extract Subject and Issuer from a Certificate | |
 
----
-
 ## How an exam works
 
-1. **Pick an exam and duration** in the UI (CKA 1, CKA 2, CKS 1, CKS 2, CKS 3 — any duration).
-2. **Setup Env** — runs that question's `setup.sh` on the cluster, putting it into the broken/incomplete state the question describes.
+1. **Pick an exam and duration** in the UI (CKA 1, CKA 2, CKS 1, CKS 2, CKS 3, any duration).
+2. **Setup Env** - runs that question's `setup.sh` on the cluster, putting it into the broken/incomplete state the question describes.
 3. Work the problem in the **terminal** (`/terminal/`, a full `bash` session on the controlplane). `kubectl`, `helm`, `etcdctl`, `crictl` are all available. Workers are reachable with `ssh node01` / `ssh node02`.
-4. **Check Answer** — runs `validate.sh`, which inspects real cluster/API/filesystem state (not YAML syntax) and returns pass/fail with a specific reason.
+4. **Check Answer** - runs `validate.sh`, which inspects real cluster/API/filesystem state (not YAML syntax) and returns pass/fail with a specific reason.
 
 ### Server API
 
-The Go exam server exposes a small REST API — useful if you want to script against it:
+The Go exam server exposes a small REST API, useful if you want to script against it:
 
 | Method | Path | Purpose |
 |---|---|---|
 | `GET` | `/api/status` | Server mode and health |
 | `GET` | `/api/session` | Current exam session, if any |
-| `POST` | `/api/session/start` | Start a session — body: `{"profile":"cka","duration_secs":7200}` |
+| `POST` | `/api/session/start` | Start a session - body: `{"profile":"cka","duration_secs":7200}` |
 | `POST` | `/api/session/end` | End the current session |
 | `GET` | `/api/questions` | List questions for the active profile |
 | `POST` | `/api/questions/{id}/setup` | Run that question's `setup.sh` |
 | `POST` | `/api/questions/{id}/check` | Run that question's `validate.sh`, return pass/fail |
-
----
 
 ## Architecture
 
@@ -324,14 +312,14 @@ Host VM  (Debian 13, kubeadm controlplane)
 |---|---|
 | Kubernetes | v1.33.x via kubeadm |
 | CNI | Calico (VXLAN), enforces NetworkPolicy |
-| Metrics | [metrics-server](https://github.com/kubernetes-sigs/metrics-server) — `kubectl top` works out of the box |
+| Metrics | [metrics-server](https://github.com/kubernetes-sigs/metrics-server), `kubectl top` works out of the box |
 | Worker nodes | Incus LXC containers, full systemd, `/dev/kmsg`, containerd |
 | Terminal | [ttyd](https://github.com/tsl0922/ttyd), running as `root` on the controlplane |
 | Exam server | Go binary + SvelteKit frontend, reads question YAML from disk at startup |
 
 ### Laptop mode (Lima)
 
-Identical stack, just relocated: the "Host VM" is a local Lima VM (Ubuntu 24.04) managed by `local/k16s-local`, with nginx's port 80 forwarded to `localhost:8080`. The controlplane/worker split, kubeadm, and Incus are unchanged — it's the same real cluster, running on your hardware instead of rented hardware.
+Identical stack, just relocated: the "Host VM" is a local Lima VM (Ubuntu 24.04) managed by `local/k16s-local`, with nginx's port 80 forwarded to `localhost:8080`. The controlplane/worker split, kubeadm, and Incus are unchanged - it's the same real cluster, running on your hardware instead of rented hardware.
 
 ### Lightweight mode (kind)
 
@@ -363,7 +351,7 @@ Swaps the VM and Incus for [kind](https://kind.sigs.k8s.io): the "Host VM" becom
 - User: `candidate` (uid 1000)
 - Shell: bash, with kubectl completion, a `k` alias, vim/tmux config
 - kubeconfig: `/home/candidate/.kube/config`
-- `ssh node01` / `ssh node02` — key-based, root inside each worker container
+- `ssh node01` / `ssh node02` - key-based, root inside each worker container
 - `ssh controlplane` → the host itself, for tasks that need host-level access
 
 ### Key versions
@@ -379,8 +367,6 @@ Swaps the VM and Incus for [kind](https://kind.sigs.k8s.io): the "Host VM" becom
 | Incus container image | `images:debian/12` |
 
 Pod CIDR: `10.244.0.0/16`. Service CIDR: `10.96.0.0/12`. Incus bridge `incusbr0`: `10.10.0.1/24`, with `node01` at `10.10.0.11` and `node02` at `10.10.0.12`.
-
----
 
 ## Adding custom questions
 
@@ -402,17 +388,15 @@ YAML fields:
 | `title` | Shown in the exam UI |
 | `weight` | Relative scoring weight |
 | `context` | `controlplane` if the question needs host-level access; omit otherwise |
-| `description` | Full question text — Markdown, shown to the candidate |
+| `description` | Full question text, Markdown, shown to the candidate |
 | `hint` | Shown when the candidate asks for a hint |
 | `requires` | Set to `heavy` if the question needs a capability lightweight mode can't provide (e.g. AppArmor). Excludes it from lightweight-mode scoring |
 
-After adding files, re-run `bash install.sh --host <ip>` (or the equivalent for your mode) to sync and restart the server. No rebuild needed — the Go binary reads YAML from disk at startup.
-
----
+After adding files, re-run `bash install.sh --host <ip>` (or the equivalent for your mode) to sync and restart the server. No rebuild needed - the Go binary reads YAML from disk at startup.
 
 ## Troubleshooting
 
-**Nodes show `NotReady` after restarting a VPS/VM.** Incus containers don't always restart in sync with `kubelet`/`incusd` right after a reboot. Check `incus list` — if `node01`/`node02` show `STOPPED`, run `incus start node01 node02`. Give it 10-15 seconds, then `kubectl get nodes` should show everything `Ready`.
+**Nodes show `NotReady` after restarting a VPS/VM.** Incus containers don't always restart in sync with `kubelet`/`incusd` right after a reboot. Check `incus list` - if `node01`/`node02` show `STOPPED`, run `incus start node01 node02`. Give it 10-15 seconds, then `kubectl get nodes` should show everything `Ready`.
 
 **Lost the SSH tunnel** (public `--host` target, laptop slept or connection dropped). Reconnect without re-running the installer:
 
@@ -421,23 +405,21 @@ After adding files, re-run `bash install.sh --host <ip>` (or the equivalent for 
 ./k16s-tunnel up <ip>
 ```
 
-**AppArmor questions are struck through / blocked.** Expected in lightweight mode — Docker doesn't expose kernel securityfs to containers. Use `--laptop` or `--host` if you need those 8 questions.
+**AppArmor questions are struck through / blocked.** Expected in lightweight mode, Docker doesn't expose kernel securityfs to containers. Use `--laptop` or `--host` if you need those 8 questions.
 
 **`kubectl top` returns nothing.** metrics-server needs a minute to collect its first data point after the cluster comes up. Wait, then retry.
-
----
 
 ## Uninstalling
 
 ```bash
-bash uninstall.sh                        # on the VM directly — asks for confirmation
+bash uninstall.sh                        # on the VM directly - asks for confirmation
 bash uninstall.sh --yes                  # skip the confirmation prompt
 bash uninstall.sh --host <ip>            # remote, same targeting as install.sh --host
-bash uninstall.sh --laptop               # deletes the whole Lima VM — nothing else to clean up
-bash uninstall.sh --lightweight          # deletes the whole kind cluster — same story
+bash uninstall.sh --laptop               # deletes the whole Lima VM, nothing else to clean up
+bash uninstall.sh --lightweight          # deletes the whole kind cluster - same story
 bash uninstall.sh --dry-run              # print what would be removed, touch nothing (VPS/host mode only)
 ```
 
 Laptop and lightweight mode are a clean teardown by construction: deleting the Lima VM's disk, or the kind cluster, removes everything K16S ever touched.
 
-For VPS/host mode, `uninstall.sh` removes the kubeadm cluster, every Incus worker container, every package K16S installed, the candidate user, and `/var/lib/k16s` + `/etc/k16s`. It only removes tools it can prove it installed — if etcdctl, Helm, Go, or Node.js were already on the machine before K16S ran, they're left alone. If K16S changed the hostname or disabled swap, both are restored. The SSH tunnel, if one was opened, is closed too.
+For VPS/host mode, `uninstall.sh` removes the kubeadm cluster, every Incus worker container, every package K16S installed, the candidate user, and `/var/lib/k16s` + `/etc/k16s`. It only removes tools it can prove it installed - if etcdctl, Helm, Go, or Node.js were already on the machine before K16S ran, they're left alone. If K16S changed the hostname or disabled swap, both are restored. The SSH tunnel, if one was opened, is closed too.
