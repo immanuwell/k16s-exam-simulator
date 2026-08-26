@@ -1,4 +1,5 @@
 id: 01-fix-notready-node
+requires: heavy
 title: Fix a NotReady Worker Node
 weight: 7
 context: controlplane

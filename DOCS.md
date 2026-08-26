@@ -45,7 +45,7 @@ Guest OS is Ubuntu 24.04 (not Debian 13) - chosen for Lima's more battle-tested 
 | Resources | ~2 GB RAM free (measured ~1.6 GB RSS for a 2-node cluster with Calico, before the exam server) |
 | Host impact | None, everything lives inside Docker's own storage |
 
-One capability gap: AppArmor doesn't work under Docker (it doesn't expose kernel securityfs to containers). 8 questions across the CKS mocks need it - see [Exam content](#exam-content).
+Two capability gaps: AppArmor doesn't work under Docker (it doesn't expose kernel securityfs to containers), and worker nodes aren't reachable the same way, since there's no Incus here. 10 questions total need one or the other - see [Exam content](#exam-content).
 
 ## Installer reference
 
@@ -154,28 +154,30 @@ Every exam bundled in `exams/` is loaded by the server at startup, pick which on
 
 Covers the [2026 CKA curriculum](https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/). Two mocks, 18 questions each.
 
+Questions marked 🔒 need the full VM-based install (kubeadm + Incus, or Lima) and are unavailable in [lightweight mode](#lightweight-mode-kind), excluded from scoring there, so 100% stays reachable.
+
 **CKA Mock 1** - core administration:
 
-| # | Question |
-|---|---|
-| 1 | Fix a NotReady Worker Node |
-| 2 | Fix a CrashLoopBackOff Pod |
-| 3 | Fix a Pending Pod, Node Selector |
-| 4 | Fix the Broken kube-scheduler |
-| 5 | Identify Highest Resource-Consuming Pods |
-| 6 | Back Up and Verify etcd |
-| 7 | Drain a Node for Maintenance |
-| 8 | RBAC, ServiceAccount, Role, and RoleBinding |
-| 9 | Check Cluster Certificate Expiration |
-| 10 | Create a Static Pod on a Worker Node |
-| 11 | NetworkPolicy, Restrict Pod-to-Pod Traffic |
-| 12 | Gateway API, Create a Gateway and HTTPRoute |
-| 13 | Create a Path-Based Ingress |
-| 14 | Add a CoreDNS Stub Zone for an Internal Domain |
-| 15 | Configure HorizontalPodAutoscaler for a Deployment |
-| 16 | Create a DaemonSet on Labeled Nodes |
-| 17 | Pod with Sidecar Container and Shared Volume |
-| 18 | PersistentVolume, PVC, and Pod with Volume Mount |
+| # | Question | |
+|---|---|---|
+| 1 | Fix a NotReady Worker Node | 🔒 |
+| 2 | Fix a CrashLoopBackOff Pod | |
+| 3 | Fix a Pending Pod, Node Selector | |
+| 4 | Fix the Broken kube-scheduler | |
+| 5 | Identify Highest Resource-Consuming Pods | |
+| 6 | Back Up and Verify etcd | |
+| 7 | Drain a Node for Maintenance | |
+| 8 | RBAC, ServiceAccount, Role, and RoleBinding | |
+| 9 | Check Cluster Certificate Expiration | |
+| 10 | Create a Static Pod on a Worker Node | 🔒 |
+| 11 | NetworkPolicy, Restrict Pod-to-Pod Traffic | |
+| 12 | Gateway API, Create a Gateway and HTTPRoute | |
+| 13 | Create a Path-Based Ingress | |
+| 14 | Add a CoreDNS Stub Zone for an Internal Domain | |
+| 15 | Configure HorizontalPodAutoscaler for a Deployment | |
+| 16 | Create a DaemonSet on Labeled Nodes | |
+| 17 | Pod with Sidecar Container and Shared Volume | |
+| 18 | PersistentVolume, PVC, and Pod with Volume Mount | |
 
 **CKA Mock 2** - advanced and 2026-updated topics:
 
@@ -204,7 +206,7 @@ Covers the [2026 CKA curriculum](https://training.linuxfoundation.org/certificat
 
 Covers the [2026 CKS curriculum](https://training.linuxfoundation.org/certification/certified-kubernetes-security-specialist-cks/). Three mocks, 18 (CKS 1: 15) questions each.
 
-Questions marked 🔒 need AppArmor and are unavailable in [lightweight mode](#lightweight-mode-kind), excluded from scoring there, so 100% stays reachable.
+All 🔒 questions below need AppArmor specifically.
 
 **CKS Mock 1:**
 
@@ -405,7 +407,7 @@ After adding files, re-run `bash install.sh --host <ip>` (or the equivalent for 
 ./k16s-tunnel up <ip>
 ```
 
-**AppArmor questions are struck through / blocked.** Expected in lightweight mode, Docker doesn't expose kernel securityfs to containers. Use `--laptop` or `--host` if you need those 8 questions.
+**Some questions are struck through / blocked.** Expected in lightweight mode: AppArmor needs kernel securityfs that Docker doesn't expose, and two questions reach worker nodes directly via Incus, which doesn't exist here. Use `--laptop` or `--host` if you need those 10 questions.
 
 **`kubectl top` returns nothing.** metrics-server needs a minute to collect its first data point after the cluster comes up. Wait, then retry.
 
