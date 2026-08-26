@@ -75,7 +75,7 @@ bash install.sh --lightweight
 
 Runs entirely inside Docker via [kind](https://kind.sigs.k8s.io), no VM, nothing written to your host OS. Still a real kubeadm cluster underneath, not an approximation: static pods, etcd, and systemd-managed kubelet/containerd are structurally identical to the other two modes.
 
-One trade-off: **AppArmor doesn't work under Docker**, so 8 CKS questions are unavailable, the UI greys them out and excludes them from scoring, so 100% is still reachable. Everything else works the same.
+One trade-off: **AppArmor doesn't work under Docker**, and a couple of questions reach worker nodes directly via Incus, which doesn't exist in this mode either. 10 questions total are unavailable, the UI greys them out and excludes them from scoring, so 100% is still reachable. Everything else works the same.
 
 Manage it with `lightweight/k16s-lite`, same command set as laptop mode.
 
