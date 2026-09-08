@@ -80,12 +80,14 @@ check_resources() {
     *) return 0 ;;
   esac
 
-  [[ "${host_cpus}" -gt 0 && "${host_cpus}" -lt $((CPUS + 1)) ]] && \
+  if [[ "${host_cpus}" -gt 0 && "${host_cpus}" -lt $((CPUS + 1)) ]]; then
     log_warn "Host has ${host_cpus} CPUs; the VM alone wants ${CPUS}. Things will be sluggish — pass --cpus to lower it."
+  fi
 
   local headroom=$((host_mem_gib - MEMORY_GIB))
-  [[ "${host_mem_gib}" -gt 0 && "${headroom}" -lt 4 ]] && \
+  if [[ "${host_mem_gib}" -gt 0 && "${headroom}" -lt 4 ]]; then
     log_warn "Host has ${host_mem_gib}GB RAM; giving the VM ${MEMORY_GIB}GB leaves ~${headroom}GB for everything else on your laptop. Pass --memory to lower it if that's too tight."
+  fi
 }
 
 # ── Instance helpers ─────────────────────────────────────────────────────
