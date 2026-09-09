@@ -3,7 +3,10 @@ set -eo pipefail
 export KUBECONFIG=/etc/kubernetes/admin.conf
 
 # node02 must have the required label
-LABEL=$(kubectl get node node02 -o jsonpath='{.metadata.labels.accelerator}' 2>/dev/null)
+if ! LABEL=$(kubectl get node node02 -o jsonpath='{.metadata.labels.accelerator}' 2>/dev/null); then
+  echo "FAIL: node02 does not exist; this exam requires two worker nodes"
+  exit 1
+fi
 if [[ "$LABEL" != "nvidia-gpu" ]]; then
   echo "FAIL: node02 does not have label accelerator=nvidia-gpu (got: '$LABEL')"
   exit 1
