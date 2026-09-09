@@ -8,7 +8,7 @@ already_done "containerd" && { log_skip "containerd"; exit 0; }
 
 source /etc/os-release
 
-apt_install curl ca-certificates gnupg2
+apt_install curl ca-certificates gnupg
 
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/${ID}/gpg \
