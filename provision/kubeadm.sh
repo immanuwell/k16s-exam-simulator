@@ -9,7 +9,7 @@ already_done "kubeadm" && { log_skip "kubeadm"; exit 0; }
 # v1.31 repo uses PGP v3 keys rejected by Debian 13's sqv verifier; use ≥1.32
 K8S_VERSION="${K16S_K8S_VERSION:-1.33}"
 
-apt_install curl ca-certificates gnupg2 apt-transport-https
+apt_install curl ca-certificates gnupg apt-transport-https
 
 curl -fsSL "https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/deb/Release.key" \
   | gpg --dearmor --yes -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg

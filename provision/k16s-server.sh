@@ -55,7 +55,7 @@ elif [[ -d "${REPO_ROOT}/server" ]]; then
     log_info "Installing Go..."
     GO_VERSION="1.23.8"
     ARCH=$(dpkg --print-architecture)
-    curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" | tar xz -C /usr/local
+    curl --retry 5 --retry-all-errors --retry-delay 2 -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" | tar xz -C /usr/local
     ln -sf /usr/local/go/bin/go    /usr/local/bin/go
     ln -sf /usr/local/go/bin/gofmt /usr/local/bin/gofmt
     log_ok "Go ${GO_VERSION} installed"
