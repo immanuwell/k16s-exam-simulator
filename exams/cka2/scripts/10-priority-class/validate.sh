@@ -13,7 +13,7 @@ if [[ "$VALUE" -ne 1000000 ]]; then
   exit 1
 fi
 
-GLOBAL=$(echo "$PC" | python3 -c "import sys,json; print(json.load(sys.stdin).get('globalDefault', True))")
+GLOBAL=$(echo "$PC" | python3 -c "import sys,json; print(json.load(sys.stdin).get('globalDefault', False))")
 if [[ "$GLOBAL" == "True" ]]; then
   echo "FAIL: PriorityClass globalDefault should be false"
   exit 1
