@@ -14,12 +14,12 @@ case "${ID}" in
     ;;
   ubuntu)
     case "${VERSION_ID}" in
-      22.04|24.04) log_ok "OS: Ubuntu ${VERSION_ID}" ;;
-      *) die "Ubuntu 22.04 or 24.04 required, got ${VERSION_ID}" ;;
+      22.04|24.04|26.04) log_ok "OS: Ubuntu ${VERSION_ID}" ;;
+      *) die "Ubuntu 22.04,24.04 or 26.04 required, got ${VERSION_ID}" ;;
     esac
     ;;
   *)
-    die "Unsupported OS '${ID}'. Supported: debian 13, ubuntu 22.04/24.04"
+    die "Unsupported OS '${ID}'. Supported: debian 13, ubuntu 22.04/24.04/26.04"
     ;;
 esac
 
